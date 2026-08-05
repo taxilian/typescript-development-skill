@@ -1,9 +1,9 @@
 ---
-name: develop-typescript-7
+name: typescript-development
 description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with inference-first, strict, DRY type design and runtime-safe boundaries. Use for .ts, .tsx, .mts, .cts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
 ---
 
-# Develop TypeScript 7
+# TypeScript Development
 
 Build code whose relationships the compiler can prove and humans can still understand. Optimize for precise inference, one source of truth, safe boundaries, and simple public contracts—not maximum type cleverness.
 
