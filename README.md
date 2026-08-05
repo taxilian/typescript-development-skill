@@ -8,6 +8,7 @@ The skill covers:
 
 - advanced inference and generic API design;
 - definition-driven and schema-driven types;
+- global, module, and framework type augmentation;
 - `satisfies`, `as const`, type guards, and safe runtime boundaries;
 - DRY domain-model composition;
 - TypeScript 7 configuration and migration;

@@ -1,6 +1,6 @@
 ---
 name: typescript-development
-description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with inference-first, strict, DRY type design and runtime-safe boundaries. Use for .ts, .tsx, .mts, .cts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
+description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with inference-first, strict, DRY type design and runtime-safe boundaries. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
 ---
 
 # TypeScript Development
@@ -10,6 +10,7 @@ Build code whose relationships the compiler can prove and humans can still under
 ## Load the right reference
 
 - Read [type-system-playbook.md](references/type-system-playbook.md) when designing or refactoring configs, exported types, generics, guards, conditional or mapped types, assertions, or `any`/`unknown` usage.
+- Read [type-augmentation.md](references/type-augmentation.md) when typing existing globals, adding properties supplied by middleware or plugins, extending third-party declarations, declaring untyped modules or assets, or designing an augmentable library API.
 - Read [typescript-7.md](references/typescript-7.md) when installing, configuring, migrating, compiling, linting, integrating editor/build tooling, or relying on TypeScript 7 behavior. Re-verify its time-sensitive compatibility notes against current primary documentation before changing dependencies.
 - Read [development-loop.md](references/development-loop.md) when choosing or changing watch mode, source execution, emitted execution, process restart hooks, source maps, or `package.json` development scripts.
 - Read [review-checklist.md](references/review-checklist.md) before finishing a material TypeScript implementation, migration, or review.
@@ -27,6 +28,7 @@ Build code whose relationships the compiler can prove and humans can still under
 9. Prefer the simplest readable representation that preserves the required relationships. A clever type that obscures behavior is a defect.
 10. Remember that TypeScript types are erased. Validate external data and preserve runtime behavior.
 11. Separate type-checking, emission, execution, and restart responsibilities. Give process restarts to exactly one tool, and never mistake fast transpilation for type-checking.
+12. Treat augmentation as a runtime proof obligation. Target the exact existing declaration, ensure the declaration file is loaded, and create or validate the augmented member before use.
 
 Use this escalation order when the compiler needs help:
 
@@ -41,6 +43,7 @@ Use this escalation order when the compiler needs help:
 - Determine whether the code is an application, an internal package, or a published library. Public API and declaration requirements change annotation decisions.
 - Identify existing typecheck, lint, test, and build scripts. Preserve the project's package manager and conventions.
 - Identify the production runtime and the current owner of type-checking, emission, source execution, and process restarts. Avoid adding a second watcher for the same responsibility.
+- Inspect existing `.d.ts` files and dependency declarations before augmenting a global or module. Find the documented open interface and the exact module specifier that owns it.
 - Inspect nearby types and values before inventing a new type. Search for the domain concept, not only the proposed identifier.
 
 ### 2. Identify sources of truth and boundaries
@@ -53,6 +56,7 @@ For every requested type change, identify:
 - mutability requirements;
 - the relationship that inference must preserve;
 - whether a configuration/schema literal is a definition language whose exact keys, flags, or tuple shapes must flow through a generic API.
+- whether an alleged global or plugin-provided member exists at runtime, on which objects, and after which initialization step.
 
 Choose value-first design when runtime data is authoritative. Choose a named interface first when an external or published contract is authoritative. Do not create a value/type dependency cycle merely to avoid writing an interface.
 
@@ -68,6 +72,7 @@ Choose value-first design when runtime data is authoritative. Choose a named int
 | Core type produced by a function | `ReturnType<typeof createThing>` | A separately versioned external contract is the real authority |
 | Type tied to a property | `Model['property']` | The property relationship is accidental rather than semantic |
 | Untrusted input | `unknown`, schema/guard, then domain type | A framework already returns a validated precise type |
+| Existing global/module member missing from types | Documented interface or module augmentation plus runtime proof | The shape is local to one pipeline; use a generic, refined type, or wrapper instead |
 | Reusable object hierarchy | `interface Child extends Parent` | The result is a union or type-level transformation |
 | Literal-preserving generic API | `const` type parameter | Callers need widening or mutation |
 | Generic inference has two candidate sources | `NoInfer<T>` on the non-authoritative source | Separate type parameters represent genuinely different values |
@@ -197,6 +202,7 @@ Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Pre
 - With a `tsconfig.json` present, do not pass source file paths directly to TypeScript 7 unless intentionally using `--ignoreConfig`; prefer the project script or `tsc -p`.
 - For public libraries, inspect emitted declarations or API reports. Ensure inferred exports did not expose private implementation details, giant anonymous types, or accidental literals.
 - Add type-level regression checks for important inference: positive assignments/`satisfies` checks and focused `@ts-expect-error` negative cases with explanations.
+- For augmentation, typecheck a consumer that imports the real public entry point, verify the augmentation file appears in `--explainFiles` or equivalent output, and test the runtime initialization path independently.
 - Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, and explicit return types. Justify each exception.
 - Do not weaken compiler or lint settings to make a local error disappear.
 

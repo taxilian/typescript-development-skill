@@ -12,10 +12,11 @@ Use this checklist before finishing a material implementation, refactor, migrati
 6. [Boundary safety](#boundary-safety)
 7. [State and mutability](#state-and-mutability)
 8. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
-9. [Development loop](#development-loop)
-10. [Compiler health and readability](#compiler-health-and-readability)
-11. [Verification](#verification)
-12. [Escape-hatch ledger](#escape-hatch-ledger)
+9. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
+10. [Development loop](#development-loop)
+11. [Compiler health and readability](#compiler-health-and-readability)
+12. [Verification](#verification)
+13. [Escape-hatch ledger](#escape-hatch-ledger)
 
 ## Project context
 
@@ -99,6 +100,21 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Do not pass source paths to `tsc` beside a `tsconfig` unless intentionally using `--ignoreConfig`.
 - [ ] Keep temporary TypeScript 6/7 dual-tooling isolated, documented, and removable.
 - [ ] Tune `--checkers`/`--builders` only from measurements.
+
+## Augmentation and ambient declarations
+
+- [ ] Confirm the augmented property or method exists at runtime and identify the code that installs it.
+- [ ] Prefer a generic, refined local type, or wrapper when the extension is not universal.
+- [ ] Target the dependency's documented open interface and exact public module specifier.
+- [ ] Distinguish module augmentation from a script-file ambient module declaration.
+- [ ] Make global augmentations module-scoped with `export {}` or a deliberate top-level import.
+- [ ] Use `var` only for values intentionally exposed on `globalThis`; do not expect top-level Node module variables to become global.
+- [ ] Keep augmented members optional unless every represented runtime value is initialized before observation.
+- [ ] Avoid augmenting type aliases, default exports, private names, or undeclared top-level module exports.
+- [ ] For Express, prefer the open global `Express` interfaces for universal additions and handler/response generics for route-local data.
+- [ ] Treat `NodeJS.ProcessEnv` augmentation as autocomplete, not validation; consume a validated config object in application code.
+- [ ] Confirm the augmentation `.d.ts` is included and that `types`, `typeRoots`, `moduleDetection`, and package subpaths do not hide or change it.
+- [ ] Typecheck declarations with `skipLibCheck: false` and test the runtime initialization, missing, and reordered paths.
 
 ## Development loop
 
