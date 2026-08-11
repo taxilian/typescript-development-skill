@@ -5,20 +5,21 @@ description: Develop, refactor, review, debug, configure, run, and migrate TypeS
 
 # TypeScript Development
 
-Build code whose runtime behavior and domain relationships the compiler describes truthfully and humans can understand quickly. Use advanced types to remove duplication and catch real mistakes, not to maximize type cleverness.
+Build code whose runtime behavior and domain relationships the compiler describes truthfully and whose types work intuitively at the point of use. Spend type-level complexity deliberately when it removes greater complexity from application code, strengthens inference, or catches real mistakes.
 
 ## Apply priorities in order
 
 Use this order to resolve tradeoffs:
 
 1. **Runtime truth and domain correctness.** Model values the program can actually receive, validate untrusted inputs, and never use an assertion or predicate to tell a convenient lie.
-2. **Readability and understandability.** Prefer recognizable domain models, ordinary control flow, and focused helpers over compressed type puzzles.
+2. **Clarity and intuitive use.** Optimize the whole abstraction, especially its call sites. Accept sophisticated internal types when they make consuming code simpler, safer, and more natural; localize them behind clear names, concise documentation, focused type tests, and actionable diagnostics.
 3. **One source of truth and reuse.** Derive linked values and types instead of copying them, but name or simplify a derivation when readers would otherwise have to decode it repeatedly.
 4. **Refactor safety.** Make new union members, keys, states, and schema fields produce useful errors at every decision or lookup that must change.
-5. **Precise local inference with low annotation noise.** Preserve useful literals and relationships while writing explicit contracts only where they add meaning.
-6. **Measured compiler and tooling health.** Keep diagnostics actionable and optimize type-checking or declaration size only from evidence.
+5. **Measured compiler and tooling health.** Keep diagnostics actionable and optimize type-checking or declaration size only from evidence.
 
-The first priority is intentionally ahead of readability: a simple type that misrepresents runtime data is still wrong. Readability is intentionally ahead of DRY and refactor machinery: do not replace a short, clear domain type with an opaque transformation merely to eliminate a few repeated tokens.
+Treat inference-first as an operating default across every priority, not as a lower-ranked objective. Infer local values and implementation return types unless an annotation communicates a deliberate contract or solves a specific inference, declaration, or measured performance constraint. Preserve literal and relational information rather than restating or widening it.
+
+Judge these priorities across the abstraction and all of its consumers, not one type expression in isolation. A simple type that misrepresents runtime data is still wrong. A complex type can be the clearest design when it concentrates complexity once and lets many call sites work naturally without annotations, assertions, duplicated relationships, or defensive branches. Do not add complexity that merely moves work around or produces harder usage and diagnostics.
 
 ## Load the right reference
 
@@ -31,10 +32,10 @@ The first priority is intentionally ahead of readability: a simple type that mis
 ## Apply the working contract
 
 1. Make every type match the values and behavior that can occur at runtime. TypeScript types are erased; validate external data.
-2. Prefer the simplest readable representation that preserves the required relationships. A clever type that obscures behavior is a defect.
-3. Keep one authoritative definition. Derive related types with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension.
-4. Infer local values and function returns by default.
-5. Annotate only where the annotation expresses a real contract, breaks a cycle, enables an intentional abstraction or assertion signature, marks a deliberately non-returning function, satisfies `isolatedDeclarations`, or fixes a measured compiler/declaration performance problem.
+2. Infer local values and function returns by default.
+3. Annotate only where the annotation expresses a real contract, breaks a cycle, enables an intentional abstraction or assertion signature, marks a deliberately non-returning function, satisfies `isolatedDeclarations`, or fixes a measured compiler/declaration performance problem.
+4. Minimize total complexity across definitions and consumers. Accept localized, named, documented, and tested type machinery when it makes common usage intuitive and meaningfully simpler.
+5. Keep one authoritative definition. Derive related types with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension.
 6. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
 7. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
 8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Keep `any` inside the smallest documented interoperability adapter when no precise alternative exists.
@@ -203,7 +204,7 @@ If `any` is unavoidable, require all of the following:
 - For schema, route, command, and similar definition APIs, capture the whole definition in one generic and thread it into the returned model/instance type. Do not widen it in an intermediate variable or non-generic helper.
 - Use `NoInfer<T>` to stop a fallback/default argument from widening the type inferred from the authoritative argument.
 - Make conditional-type distribution intentional; wrap both sides in tuples when the union must be treated as a whole.
-- Name and test complex mapped, recursive, or conditional types. Stop if a direct interface, discriminated union, or overload is clearer.
+- Name, document, and test complex mapped, recursive, or conditional types. Keep them when they improve inference, remove repeated consumer logic, or enforce a valuable invariant; choose a direct interface, discriminated union, or overload when the advanced form does not provide enough downstream benefit.
 
 ### 7. Model, narrow, and exhaust states
 

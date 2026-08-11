@@ -1,6 +1,6 @@
 # Type-System Playbook
 
-Use this reference for non-trivial TypeScript design. Apply the skill's priority order throughout: runtime truth, readability, one source of truth, refactor safety, precise inference, then measured tooling concerns. Prefer the first simple pattern that preserves the real relationship. Keep examples minimal and framework-neutral: demonstrate one mechanism, then explain variations in prose instead of adding several near-duplicate examples.
+Use this reference for non-trivial TypeScript design. Apply the skill's priority order throughout: runtime truth, intuitive use, one source of truth, refactor safety, then measured tooling concerns. Use inference-first design across all of them: infer local values and implementation returns while preserving useful literals and relationships. Choose the least complex implementation that produces the best overall abstraction; sophisticated internal types are appropriate when they are localized and make consuming code meaningfully simpler. Keep examples minimal and framework-neutral: demonstrate one mechanism, then explain variations in prose instead of adding several near-duplicate examples.
 
 ## Contents
 
@@ -668,6 +668,9 @@ The localized assertion is justified by runtime validation. Export constructors/
 
 ## Keep types readable and fast
 
+- Judge complexity across the type implementation and every call site. Concentrating complexity in one reusable abstraction can be substantially simpler than repeating annotations, assertions, overload logic, or manual narrowing throughout the codebase.
+- Make advanced abstractions feel intuitive to consumers: infer expected types, reject invalid combinations at the relevant expression, and avoid requiring callers to understand the internal machinery.
+- Give sophisticated types a domain-relevant name, concise explanation of the relationship they preserve, focused positive and negative type tests, and actionable diagnostics.
 - Prefer interface extension over intersections for named objects.
 - Name complex conditional or mapped results so the compiler can cache and humans can inspect them.
 - Prefer base interfaces over very large unions when the behavior is genuinely shared.
@@ -676,6 +679,7 @@ The localized assertion is justified by runtime validation. Export constructors/
 - Use project references and focused `include`/`types` settings for large repositories.
 - Do not assume a `Simplify<T>` mapped type improves compiler performance; it often changes only display and may hide useful aliases.
 - Measure with compiler diagnostics/traces before making code less clear for hypothetical performance.
+- Replace an advanced type only when the alternative reduces total complexity or improves correctness, usage, diagnostics, or measured compiler health—not merely because the implementation is sophisticated.
 
 ## Recognize common failure modes
 

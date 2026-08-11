@@ -16,6 +16,6 @@ The skill covers:
 - `tsc`, `tsc-watch`, and `tsx` development loops;
 - type-level and runtime verification.
 
-Its priorities are runtime truth, readability, one source of truth, and compiler-enforced refactor safety. Advanced types are used only when they make those properties stronger without making the code harder to understand.
+Its priorities are runtime truth, intuitive use, one source of truth, and compiler-enforced refactor safety. Sophisticated type machinery is welcome when it is localized, named, documented, and tested—and makes the code using it meaningfully simpler.
 
 Start with [`typescript-development/SKILL.md`](typescript-development/SKILL.md). Supporting references are loaded as needed from [`typescript-development/references/`](typescript-development/references/).

@@ -22,10 +22,13 @@ Use this checklist before finishing a material implementation, refactor, migrati
 ## Priority gate
 
 - [ ] Types match values and behavior that can occur at runtime; external data is validated before trust.
-- [ ] The representation is the simplest one that explains the domain and preserves required relationships.
+- [ ] Local values and implementation return types are inferred by default; every explicit annotation communicates a deliberate contract or documented constraint.
+- [ ] The design minimizes total complexity across the abstraction and its consumers, not merely the syntax of the type definition.
+- [ ] Any sophisticated type machinery is localized, clearly named, concisely documented, and protected by focused positive and negative type tests.
+- [ ] Common call sites work intuitively without unnecessary annotations, assertions, duplicated logic, or knowledge of the internal type machinery.
 - [ ] Linked facts have one authoritative source; derivations are named or simplified when reuse would otherwise become opaque.
 - [ ] New finite states, variants, keys, and schema fields fail at every branch or lookup that must be updated.
-- [ ] Inference preserves useful detail without hiding a deliberate public contract.
+- [ ] Inference preserves useful literals and relationships without hiding a deliberate public contract.
 - [ ] Compiler-performance or declaration-size changes are supported by measurements.
 
 ## Project context
@@ -155,11 +158,13 @@ Use this checklist before finishing a material implementation, refactor, migrati
 
 ## Compiler health and readability
 
+- [ ] Evaluate an advanced type by its downstream benefit: simpler call sites, stronger inference, less repetition, or a valuable enforced invariant.
 - [ ] Prefer interfaces/extends over named object intersections.
 - [ ] Name repeated complex types for caching and diagnostics.
 - [ ] Avoid huge unions, union intersections, unbounded recursion, and type-level parsers without a demonstrated need.
 - [ ] Do not trade readability for hypothetical compiler speed; measure first.
 - [ ] Ensure error messages remain understandable to callers.
+- [ ] Do not replace localized advanced machinery with a simpler-looking definition that pushes complexity into every consumer.
 
 ## Verification
 
