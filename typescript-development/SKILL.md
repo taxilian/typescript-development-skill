@@ -1,6 +1,6 @@
 ---
 name: typescript-development
-description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with runtime-faithful, readable, inference-first, strict, and DRY type design. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, control-flow narrowing, discriminated unions, never and exhaustiveness, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
+description: Develop, refactor, review, debug, document, configure, run, and migrate TypeScript 7 code with runtime-faithful, readable, inference-first, strict, and DRY type design. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, TSDoc or JSDoc, TypeDoc, public API documentation, implementation comments, descriptive naming, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, control-flow narrowing, discriminated unions, never and exhaustiveness, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
 ---
 
 # TypeScript Development
@@ -24,6 +24,7 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 ## Load the right reference
 
 - Read [type-system-playbook.md](references/type-system-playbook.md) when designing or refactoring configs, exported types, generics, guards, discriminated unions, exhaustive decisions, deliberate `never` usage, conditional or mapped types, assertions, or `any`/`unknown` usage.
+- Read [code-documentation.md](references/code-documentation.md) when adding or reviewing TSDoc/JSDoc, public API documentation, interface or property descriptions, implementation comments, phase comments, TODOs, examples, or abbreviated names.
 - Read [type-augmentation.md](references/type-augmentation.md) when typing existing globals, adding properties supplied by middleware or plugins, extending third-party declarations, declaring untyped modules or assets, or designing an augmentable library API.
 - Read [typescript-7.md](references/typescript-7.md) when installing, configuring, migrating, compiling, linting, integrating editor/build tooling, or relying on TypeScript 7 behavior. Re-verify its time-sensitive compatibility notes against current primary documentation before changing dependencies.
 - Read [development-loop.md](references/development-loop.md) when choosing or changing watch mode, source execution, emitted execution, process restart hooks, source maps, or `package.json` development scripts.
@@ -42,8 +43,9 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Never use them merely to silence the compiler.
 10. Prefer interfaces and `extends` for named object hierarchies. Prefer type aliases for unions, tuples, primitives, mapped types, conditional types, and other transformations.
 11. Model finite states with discriminated unions and make decisions over them exhaustive. Treat an unexpected `never` as a diagnostic to investigate, not a type to cast away.
-12. Separate type-checking, emission, execution, and restart responsibilities. Give process restarts to exactly one tool, and never mistake fast transpilation for type-checking.
-13. Treat augmentation as a runtime proof obligation. Target the exact existing declaration, ensure the declaration file is loaded, and create or validate the augmented member before use.
+12. Document public contracts with TSDoc and implementation intent with `//` comments. Add semantic information rather than restating names and types; rename or refactor before compensating with narration.
+13. Separate type-checking, emission, execution, and restart responsibilities. Give process restarts to exactly one tool, and never mistake fast transpilation for type-checking.
+14. Treat augmentation as a runtime proof obligation. Target the exact existing declaration, ensure the declaration file is loaded, and create or validate the augmented member before use.
 
 Use this escalation order when the compiler needs help:
 
@@ -59,6 +61,7 @@ Use this escalation order when the compiler needs help:
 - Identify existing typecheck, lint, test, and build scripts. Preserve the project's package manager and conventions.
 - Identify the production runtime and the current owner of type-checking, emission, source execution, and process restarts. Avoid adding a second watcher for the same responsibility.
 - Inspect existing `.d.ts` files and dependency declarations before augmenting a global or module. Find the documented open interface and the exact module specifier that owns it.
+- Inspect existing TSDoc/JSDoc style, generated-documentation tooling, lint rules, declaration output, and documentation coverage expectations before adding comments or tags.
 - Inspect nearby types and values before inventing a new type. Search for the domain concept, not only the proposed identifier.
 
 ### 2. Identify sources of truth and boundaries
@@ -72,6 +75,7 @@ For every requested type change, identify:
 - the relationship that inference must preserve;
 - whether a configuration/schema literal is a definition language whose exact keys, flags, or tuple shapes must flow through a generic API.
 - whether an alleged global or plugin-provided member exists at runtime, on which objects, and after which initialization step.
+- which declarations form a public or subsystem contract, what their consumers cannot learn from the signature alone, and which comments are implementation-only.
 
 Choose value-first design when runtime data is authoritative. Choose a named interface first when an external or published contract is authoritative. Do not create a value/type dependency cycle merely to avoid writing an interface.
 
@@ -218,7 +222,15 @@ Prefer a complete `Record` literal checked with `satisfies` when the operation i
 
 Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Prefer equality, `typeof`, `instanceof`, `Array.isArray`, `in`, or a discriminant.
 
-### 8. Verify behavior and types
+### 8. Document contracts and implementation intent
+
+- Give published/public top-level exports TSDoc summaries. Document internal declarations when they carry a non-obvious contract, invariant, algorithm, or workaround; do not force placeholder prose onto trivial local helpers.
+- Use summaries and tags to explain semantic behavior: constraints, units, formats, defaults, ownership, mutation, ordering, side effects, stable failure conditions, and generic relationships. Omit `@param` or `@returns` when it would only repeat the name and TypeScript signature.
+- Use `//` comments for implementation rationale and meaningful algorithmic phases. If a long function needs narration for many small blocks, first extract responsibilities, name intermediate concepts, flatten control flow, or strengthen its types.
+- Rename unfamiliar shortened variables instead of adding comments to decode them. Permit conventional or tiny-scope names; document forced external abbreviations at the nearest reusable interface or protocol boundary.
+- Document exported interfaces/types and every property whose units, optional semantics, default, lifecycle, sensitivity, or cross-field relationship is not obvious. Extract a nested interface for a true field group; use restrained `//` headings only when a required flat shape must remain flat.
+
+### 9. Verify behavior, types, and documentation
 
 - Run the repository's narrowest relevant typecheck, lint, and test commands, then broader checks in proportion to the change.
 - When changing the development loop, verify both a type error and a runtime edit: confirm the intended process restarts once, failed builds behave deliberately, source maps point to TypeScript, and shutdown releases ports and resources.
@@ -229,9 +241,11 @@ Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Pre
 - For a changed finite union, enum, event map, or key set, verify that adding a temporary member fails every exhaustive branch and complete lookup that requires an update.
 - Use a type-aware switch-exhaustiveness lint rule as a supplement when the project already supports typed linting; configure it so a generic `default` does not hide newly added union members.
 - For augmentation, typecheck a consumer that imports the real public entry point, verify the augmentation file appears in `--explainFiles` or equivalent output, and test the runtime initialization path independently.
+- When documentation tooling exists, validate TSDoc syntax, links, intended public coverage, and generated output. Keep code examples typechecked or executable when practical.
+- Review changed comments beside changed behavior. Remove stale narration and verify defaults, units, optional semantics, side effects, errors, deprecations, and TODO references.
 - Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, explicit return types, and unusual `never` uses. Justify each exception.
 - Do not weaken compiler or lint settings to make a local error disappear.
 
-### 9. Report the result
+### 10. Report the result
 
 Lead with the implemented behavior. Name the source of truth for derived types, any deliberate public annotations, every remaining escape hatch, and the verification commands run. If tooling prevented full verification, state the exact gap and its impact.

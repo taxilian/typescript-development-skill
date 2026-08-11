@@ -11,6 +11,7 @@ The skill covers:
 - global, module, and framework type augmentation;
 - `satisfies`, `as const`, type guards, and safe runtime boundaries;
 - control-flow narrowing, `never`, and refactor-safe exhaustiveness;
+- TSDoc, public API documentation, implementation comments, and descriptive naming;
 - DRY domain-model composition;
 - TypeScript 7 configuration and migration;
 - `tsc`, `tsc-watch`, and `tsx` development loops;

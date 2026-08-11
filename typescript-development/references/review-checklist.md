@@ -12,12 +12,13 @@ Use this checklist before finishing a material implementation, refactor, migrati
 6. [Generics and advanced types](#generics-and-advanced-types)
 7. [Boundary safety](#boundary-safety)
 8. [State, control flow, and mutability](#state-control-flow-and-mutability)
-9. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
-10. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
-11. [Development loop](#development-loop)
-12. [Compiler health and readability](#compiler-health-and-readability)
-13. [Verification](#verification)
-14. [Escape-hatch ledger](#escape-hatch-ledger)
+9. [Documentation and comments](#documentation-and-comments)
+10. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
+11. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
+12. [Development loop](#development-loop)
+13. [Compiler health and readability](#compiler-health-and-readability)
+14. [Verification](#verification)
+15. [Escape-hatch ledger](#escape-hatch-ledger)
 
 ## Priority gate
 
@@ -115,6 +116,21 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Avoid optional-property bags that admit impossible states.
 - [ ] Verify handler parameter variance where narrower callbacks could be unsafe.
 
+## Documentation and comments
+
+- [ ] Follow the repository's established TSDoc/JSDoc dialect, documentation generator, and coverage policy.
+- [ ] Give published/public top-level exports a consumer-focused TSDoc summary.
+- [ ] Document internal declarations only when their contract, invariant, algorithm, or workaround is not clear from names, types, and structure.
+- [ ] Use `/** ... */` for declaration documentation and `//` for implementation rationale or phases.
+- [ ] Make summaries, `@param`, `@returns`, `@typeParam`, `@throws`, defaults, and examples add semantics rather than repeat TypeScript types.
+- [ ] Document units, ranges, formats, defaults, optional semantics, ownership, mutation, ordering, side effects, error conditions, and lifecycle where relevant.
+- [ ] Rename ambiguous abbreviations; reserve short names for conventional notation, familiar acronyms, tiny scopes, or forced external fields.
+- [ ] Refactor unrelated responsibilities or deeply nested logic before outlining a long function with comments.
+- [ ] Separate cohesive phases with blank lines and concise comments; avoid numbered outlines and decorative banners unless a stable protocol genuinely requires them.
+- [ ] Extract real interface field groups into named nested types when that improves the model; for required flat shapes, keep group headings restrained and document non-obvious properties individually.
+- [ ] Update comments with behavior and remove stale, redundant, commented-out, or historical narration.
+- [ ] Keep documentation examples typechecked or executable where practical and give deprecations/TODOs actionable next steps.
+
 ## TypeScript 7 configuration and tooling
 
 - [ ] Use `nodenext` versus `bundler` according to the actual runtime/build resolver.
@@ -170,6 +186,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 
 - [ ] Run the narrowest relevant project typecheck, then the broader typecheck as appropriate.
 - [ ] Run compatible typed lint rules, tests, and the relevant build.
+- [ ] Validate TSDoc syntax, documentation links, and intended public coverage when the project has documentation tooling.
+- [ ] Inspect generated API documentation for attachment, rendering, and missing or misleading descriptions.
 - [ ] Inspect declaration output/API reports for published packages.
 - [ ] Add positive inference assertions and focused negative `@ts-expect-error` cases.
 - [ ] Temporarily add a union member or lookup key and confirm every required exhaustive branch/table fails to typecheck.
