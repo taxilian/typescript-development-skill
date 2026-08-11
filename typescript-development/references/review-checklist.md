@@ -4,19 +4,29 @@ Use this checklist before finishing a material implementation, refactor, migrati
 
 ## Contents
 
-1. [Project context](#project-context)
-2. [Inference and contracts](#inference-and-contracts)
-3. [Objects and configuration](#objects-and-configuration)
-4. [DRY type composition](#dry-type-composition)
-5. [Generics and advanced types](#generics-and-advanced-types)
-6. [Boundary safety](#boundary-safety)
-7. [State and mutability](#state-and-mutability)
-8. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
-9. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
-10. [Development loop](#development-loop)
-11. [Compiler health and readability](#compiler-health-and-readability)
-12. [Verification](#verification)
-13. [Escape-hatch ledger](#escape-hatch-ledger)
+1. [Priority gate](#priority-gate)
+2. [Project context](#project-context)
+3. [Inference and contracts](#inference-and-contracts)
+4. [Objects and configuration](#objects-and-configuration)
+5. [DRY type composition](#dry-type-composition)
+6. [Generics and advanced types](#generics-and-advanced-types)
+7. [Boundary safety](#boundary-safety)
+8. [State, control flow, and mutability](#state-control-flow-and-mutability)
+9. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
+10. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
+11. [Development loop](#development-loop)
+12. [Compiler health and readability](#compiler-health-and-readability)
+13. [Verification](#verification)
+14. [Escape-hatch ledger](#escape-hatch-ledger)
+
+## Priority gate
+
+- [ ] Types match values and behavior that can occur at runtime; external data is validated before trust.
+- [ ] The representation is the simplest one that explains the domain and preserves required relationships.
+- [ ] Linked facts have one authoritative source; derivations are named or simplified when reuse would otherwise become opaque.
+- [ ] New finite states, variants, keys, and schema fields fail at every branch or lookup that must be updated.
+- [ ] Inference preserves useful detail without hiding a deliberate public contract.
+- [ ] Compiler-performance or declaration-size changes are supported by measurements.
 
 ## Project context
 
@@ -30,6 +40,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 
 - [ ] Infer local function returns and local values.
 - [ ] Give each explicit return annotation a concrete reason: public contract, recursion, intentional abstraction, `isolatedDeclarations`, overload/assertion signature, or measured performance.
+- [ ] Explicitly annotate a shared failure or exhaustiveness helper with `never`; verify that every path truly cannot complete normally.
 - [ ] Use contextual typing for callbacks rather than repeating parameter types.
 - [ ] Prevent inferred public declarations from exposing private names, accidental literals, or giant anonymous structures.
 - [ ] Prefer `ReturnType`, `Parameters`, and `Awaited` when a function is the source of truth.
@@ -65,6 +76,10 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Keep correlated keys, payloads, and callbacks in a discriminated or mapped-indexed union.
 - [ ] Make conditional distribution explicit.
 - [ ] Name and test complex conditional, mapped, template-literal, or recursive types.
+- [ ] Use `Exclude`/`Extract` before writing a custom `never`-based union filter.
+- [ ] Use key remapping to `never` only when the runtime API really filters those keys.
+- [ ] Tuple-wrap an `IsNever`-style check so distributive conditional behavior cannot erase the test.
+- [ ] Use `(...args: never[]) => unknown` only to inspect or constrain a callable that will never be invoked; use variadic tuples when calling or wrapping it.
 - [ ] Prefer a direct union/interface/overload when it communicates better.
 - [ ] For definition-driven APIs, capture the whole definition, interpret it with mapped/conditional types, and thread it into the returned model or instance.
 - [ ] Use the library's supported `Infer...` helper and distinguish raw data from hydrated/wrapped values where applicable.
@@ -74,6 +89,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Assign untrusted raw data to `unknown` and narrow immediately.
 - [ ] Use the project's existing runtime schema/validator when available.
 - [ ] Make handwritten guards prove every required field and test true/false cases.
+- [ ] Treat a predicate claiming `value is never` as a likely type lie; normal guards should narrow an impossible remainder to `never`.
 - [ ] Avoid truthiness narrowing when valid values can be `0`, `''`, or `false`.
 - [ ] Treat caught errors as `unknown` until narrowed.
 - [ ] Prevent `any` from leaking out of external adapters.
@@ -81,10 +97,16 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Reject double assertions and `@ts-ignore`.
 - [ ] Use `@ts-expect-error` only for focused negative tests or documented external defects.
 
-## State and mutability
+## State, control flow, and mutability
 
 - [ ] Use discriminated unions for mutually exclusive states.
-- [ ] Require exhaustive handling with `never` or a project-standard exhaustive helper.
+- [ ] Narrow a known union inline with its discriminant or other ordinary control flow before creating a one-use guard.
+- [ ] Use a named guard only for a reused semantic rule or multi-step boundary validation.
+- [ ] Require exhaustive `switch` statements and `if` chains with one project-standard helper that accepts and returns `never`.
+- [ ] Keep a runtime throw in the exhaustive helper when unvalidated or version-skewed values can arrive.
+- [ ] Prefer a complete `satisfies Record<Keys, Value>` lookup when the operation is static data mapping.
+- [ ] Do not let a broad `default` silently absorb future members of a closed union or enum.
+- [ ] Prefer a discriminant over optional `never` properties; use the exclusive-property pattern only when the runtime shape cannot carry a tag.
 - [ ] Accept readonly inputs when mutation is unnecessary.
 - [ ] Distinguish optional absence from explicit `undefined`, especially with `exactOptionalPropertyTypes`.
 - [ ] Avoid optional-property bags that admit impossible states.
@@ -96,6 +118,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Remove unsupported legacy target/module/resolution options and `baseUrl` assumptions.
 - [ ] Set `rootDir` and ambient `types` intentionally.
 - [ ] Keep `strict` enabled; consider `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`.
+- [ ] If using typescript-eslint switch exhaustiveness, use typed linting and keep `considerDefaultExhaustiveForUnions: false` when every new member must receive an explicit case.
+- [ ] Reject redundant default cases only when runtime values cannot exceed the compile-time union; otherwise retain a throwing default deliberately.
 - [ ] Use `verbatimModuleSyntax`, `isolatedModules`, `isolatedDeclarations`, and `erasableSyntaxOnly` only when the build model calls for them.
 - [ ] Do not pass source paths to `tsc` beside a `tsconfig` unless intentionally using `--ignoreConfig`.
 - [ ] Keep temporary TypeScript 6/7 dual-tooling isolated, documented, and removable.
@@ -143,6 +167,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Run compatible typed lint rules, tests, and the relevant build.
 - [ ] Inspect declaration output/API reports for published packages.
 - [ ] Add positive inference assertions and focused negative `@ts-expect-error` cases.
+- [ ] Temporarily add a union member or lookup key and confirm every required exhaustive branch/table fails to typecheck.
+- [ ] Verify non-returning helpers narrow following expressions and still throw or halt at runtime.
 - [ ] Test runtime validation independently from compile-time types.
 - [ ] Review the final diff for behavior changes and unrelated config churn.
 
@@ -151,6 +177,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 Search the final diff for each item and record the reason for every new occurrence:
 
 - [ ] explicit function return annotation;
+- [ ] `never` return outside a failure/exhaustiveness contract;
+- [ ] `as never` or an explicit `value is never` predicate;
 - [ ] `unknown`;
 - [ ] `any`;
 - [ ] `as` assertion;

@@ -1,15 +1,28 @@
 ---
 name: typescript-development
-description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with inference-first, strict, DRY type design and runtime-safe boundaries. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
+description: Develop, refactor, review, debug, configure, run, and migrate TypeScript 7 code with runtime-faithful, readable, inference-first, strict, and DRY type design. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, control-flow narrowing, discriminated unions, never and exhaustiveness, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
 ---
 
 # TypeScript Development
 
-Build code whose relationships the compiler can prove and humans can still understand. Optimize for precise inference, one source of truth, safe boundaries, and simple public contracts—not maximum type cleverness.
+Build code whose runtime behavior and domain relationships the compiler describes truthfully and humans can understand quickly. Use advanced types to remove duplication and catch real mistakes, not to maximize type cleverness.
+
+## Apply priorities in order
+
+Use this order to resolve tradeoffs:
+
+1. **Runtime truth and domain correctness.** Model values the program can actually receive, validate untrusted inputs, and never use an assertion or predicate to tell a convenient lie.
+2. **Readability and understandability.** Prefer recognizable domain models, ordinary control flow, and focused helpers over compressed type puzzles.
+3. **One source of truth and reuse.** Derive linked values and types instead of copying them, but name or simplify a derivation when readers would otherwise have to decode it repeatedly.
+4. **Refactor safety.** Make new union members, keys, states, and schema fields produce useful errors at every decision or lookup that must change.
+5. **Precise local inference with low annotation noise.** Preserve useful literals and relationships while writing explicit contracts only where they add meaning.
+6. **Measured compiler and tooling health.** Keep diagnostics actionable and optimize type-checking or declaration size only from evidence.
+
+The first priority is intentionally ahead of readability: a simple type that misrepresents runtime data is still wrong. Readability is intentionally ahead of DRY and refactor machinery: do not replace a short, clear domain type with an opaque transformation merely to eliminate a few repeated tokens.
 
 ## Load the right reference
 
-- Read [type-system-playbook.md](references/type-system-playbook.md) when designing or refactoring configs, exported types, generics, guards, conditional or mapped types, assertions, or `any`/`unknown` usage.
+- Read [type-system-playbook.md](references/type-system-playbook.md) when designing or refactoring configs, exported types, generics, guards, discriminated unions, exhaustive decisions, deliberate `never` usage, conditional or mapped types, assertions, or `any`/`unknown` usage.
 - Read [type-augmentation.md](references/type-augmentation.md) when typing existing globals, adding properties supplied by middleware or plugins, extending third-party declarations, declaring untyped modules or assets, or designing an augmentable library API.
 - Read [typescript-7.md](references/typescript-7.md) when installing, configuring, migrating, compiling, linting, integrating editor/build tooling, or relying on TypeScript 7 behavior. Re-verify its time-sensitive compatibility notes against current primary documentation before changing dependencies.
 - Read [development-loop.md](references/development-loop.md) when choosing or changing watch mode, source execution, emitted execution, process restart hooks, source maps, or `package.json` development scripts.
@@ -17,18 +30,19 @@ Build code whose relationships the compiler can prove and humans can still under
 
 ## Apply the working contract
 
-1. Infer local values and function returns by default.
-2. Annotate only where the annotation expresses a real contract, breaks a cycle, enables an intentional abstraction, satisfies `isolatedDeclarations`, or fixes a measured compiler/declaration performance problem.
+1. Make every type match the values and behavior that can occur at runtime. TypeScript types are erased; validate external data.
+2. Prefer the simplest readable representation that preserves the required relationships. A clever type that obscures behavior is a defect.
 3. Keep one authoritative definition. Derive related types with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension.
-4. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
-5. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
-6. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Keep `any` inside the smallest documented interoperability adapter when no precise alternative exists.
-7. Treat type assertions and non-null assertions as proof obligations. Never use them merely to silence the compiler.
-8. Prefer interfaces and `extends` for named object hierarchies. Prefer type aliases for unions, tuples, primitives, mapped types, conditional types, and other transformations.
-9. Prefer the simplest readable representation that preserves the required relationships. A clever type that obscures behavior is a defect.
-10. Remember that TypeScript types are erased. Validate external data and preserve runtime behavior.
-11. Separate type-checking, emission, execution, and restart responsibilities. Give process restarts to exactly one tool, and never mistake fast transpilation for type-checking.
-12. Treat augmentation as a runtime proof obligation. Target the exact existing declaration, ensure the declaration file is loaded, and create or validate the augmented member before use.
+4. Infer local values and function returns by default.
+5. Annotate only where the annotation expresses a real contract, breaks a cycle, enables an intentional abstraction or assertion signature, marks a deliberately non-returning function, satisfies `isolatedDeclarations`, or fixes a measured compiler/declaration performance problem.
+6. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
+7. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
+8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Keep `any` inside the smallest documented interoperability adapter when no precise alternative exists.
+9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Never use them merely to silence the compiler.
+10. Prefer interfaces and `extends` for named object hierarchies. Prefer type aliases for unions, tuples, primitives, mapped types, conditional types, and other transformations.
+11. Model finite states with discriminated unions and make decisions over them exhaustive. Treat an unexpected `never` as a diagnostic to investigate, not a type to cast away.
+12. Separate type-checking, emission, execution, and restart responsibilities. Give process restarts to exactly one tool, and never mistake fast transpilation for type-checking.
+13. Treat augmentation as a runtime proof obligation. Target the exact existing declaration, ensure the declaration file is loaded, and create or validate the augmented member before use.
 
 Use this escalation order when the compiler needs help:
 
@@ -76,6 +90,9 @@ Choose value-first design when runtime data is authoritative. Choose a named int
 | Reusable object hierarchy | `interface Child extends Parent` | The result is a union or type-level transformation |
 | Literal-preserving generic API | `const` type parameter | Callers need widening or mutation |
 | Generic inference has two candidate sources | `NoInfer<T>` on the non-authoritative source | Separate type parameters represent genuinely different values |
+| Known discriminated union inside a function | Inline `if`, `switch`, equality, or `in` narrowing | A reusable semantic check or complex boundary validation justifies a named guard |
+| Finite decision over a union or enum | Explicit cases plus a reusable `assertNever`-style terminator | A complete `Record` lookup communicates a data mapping more clearly |
+| Complete lookup over finite keys | Literal with `satisfies Record<Keys, Value>` | Missing keys have a deliberate, validated runtime fallback |
 
 ### 4. Implement inference-first
 
@@ -188,9 +205,15 @@ If `any` is unavoidable, require all of the following:
 - Make conditional-type distribution intentional; wrap both sides in tuples when the union must be treated as a whole.
 - Name and test complex mapped, recursive, or conditional types. Stop if a direct interface, discriminated union, or overload is clearer.
 
-### 7. Model states, not flags
+### 7. Model, narrow, and exhaust states
 
-Prefer discriminated unions for mutually exclusive states. Narrow with runtime control flow and require exhaustiveness with `never`. Avoid optional-property bags that permit impossible combinations.
+Prefer discriminated unions for mutually exclusive states. Avoid optional-property bags that permit impossible combinations.
+
+Narrow a known union with ordinary JavaScript control flow first: a discriminant comparison, equality, `typeof`, `instanceof`, `Array.isArray`, or `in`. TypeScript follows `if`/`else`, early returns, assignments, and `switch`; do not extract a one-use type guard merely to restate a check the compiler already understands. Use a named predicate when the runtime test is complex or reused, and remember that an explicit predicate promises both its true and false branches.
+
+For every finite decision, handle each member explicitly and terminate the impossible remainder with a project-standard function accepting `never` and returning `never`. Its explicit return type is justified because it declares a control-flow contract and preserves a runtime error for unvalidated or version-skewed values. Do not use a permissive `default` that silently handles future members.
+
+Prefer a complete `Record` literal checked with `satisfies` when the operation is a static mapping rather than behavior. Adding a union member should fail at the lookup definition just as it should fail at an exhaustive branch.
 
 Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Prefer equality, `typeof`, `instanceof`, `Array.isArray`, `in`, or a discriminant.
 
@@ -202,8 +225,10 @@ Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Pre
 - With a `tsconfig.json` present, do not pass source file paths directly to TypeScript 7 unless intentionally using `--ignoreConfig`; prefer the project script or `tsc -p`.
 - For public libraries, inspect emitted declarations or API reports. Ensure inferred exports did not expose private implementation details, giant anonymous types, or accidental literals.
 - Add type-level regression checks for important inference: positive assignments/`satisfies` checks and focused `@ts-expect-error` negative cases with explanations.
+- For a changed finite union, enum, event map, or key set, verify that adding a temporary member fails every exhaustive branch and complete lookup that requires an update.
+- Use a type-aware switch-exhaustiveness lint rule as a supplement when the project already supports typed linting; configure it so a generic `default` does not hide newly added union members.
 - For augmentation, typecheck a consumer that imports the real public entry point, verify the augmentation file appears in `--explainFiles` or equivalent output, and test the runtime initialization path independently.
-- Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, and explicit return types. Justify each exception.
+- Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, explicit return types, and unusual `never` uses. Justify each exception.
 - Do not weaken compiler or lint settings to make a local error disappear.
 
 ### 9. Report the result

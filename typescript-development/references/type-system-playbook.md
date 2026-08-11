@@ -1,6 +1,6 @@
 # Type-System Playbook
 
-Use this reference for non-trivial TypeScript design. Prefer the first simple pattern that preserves the real relationship. Keep examples minimal and framework-neutral: demonstrate one mechanism, then explain variations in prose instead of adding several near-duplicate examples.
+Use this reference for non-trivial TypeScript design. Apply the skill's priority order throughout: runtime truth, readability, one source of truth, refactor safety, precise inference, then measured tooling concerns. Prefer the first simple pattern that preserves the real relationship. Keep examples minimal and framework-neutral: demonstrate one mechanism, then explain variations in prose instead of adding several near-duplicate examples.
 
 ## Contents
 
@@ -10,15 +10,19 @@ Use this reference for non-trivial TypeScript design. Prefer the first simple pa
 4. [Design inference-friendly generics](#design-inference-friendly-generics)
 5. [Compose types without repetition](#compose-types-without-repetition)
 6. [Preserve correlated data](#preserve-correlated-data)
-7. [Model states with discriminated unions](#model-states-with-discriminated-unions)
-8. [Narrow boundary data safely](#narrow-boundary-data-safely)
-9. [Control assertions and escape hatches](#control-assertions-and-escape-hatches)
-10. [Represent mutability and variance](#represent-mutability-and-variance)
-11. [Use mapped and conditional types intentionally](#use-mapped-and-conditional-types-intentionally)
-12. [Use nominal distinctions only when valuable](#use-nominal-distinctions-only-when-valuable)
-13. [Handle async code and errors](#handle-async-code-and-errors)
-14. [Keep types readable and fast](#keep-types-readable-and-fast)
-15. [Recognize common failure modes](#recognize-common-failure-modes)
+7. [Model finite states](#model-finite-states)
+8. [Narrow known unions with control flow](#narrow-known-unions-with-control-flow)
+9. [Enforce exhaustive decisions](#enforce-exhaustive-decisions)
+10. [Use never deliberately](#use-never-deliberately)
+11. [Narrow boundary data safely](#narrow-boundary-data-safely)
+12. [Control assertions and escape hatches](#control-assertions-and-escape-hatches)
+13. [Represent mutability and variance](#represent-mutability-and-variance)
+14. [Use mapped and conditional types intentionally](#use-mapped-and-conditional-types-intentionally)
+15. [Use nominal distinctions only when valuable](#use-nominal-distinctions-only-when-valuable)
+16. [Handle async code and errors](#handle-async-code-and-errors)
+17. [Keep types readable and fast](#keep-types-readable-and-fast)
+18. [Recognize common failure modes](#recognize-common-failure-modes)
+19. [Primary references](#primary-references)
 
 ## Choose the source of truth
 
@@ -366,7 +370,7 @@ function validateField<K extends keyof FieldTypes>(field: Field<K>) {
 
 The mapped-and-indexed union keeps `kind`, `value`, and `validate` paired. Use this pattern for event maps, command payloads, and registries. Prefer a direct discriminated union when there are only a few cases.
 
-## Model states with discriminated unions
+## Model finite states
 
 ```ts
 type RequestState<T> =
@@ -374,6 +378,43 @@ type RequestState<T> =
   | { status: 'loading' }
   | { status: 'success'; data: T }
   | { status: 'failure'; error: Error };
+```
+
+Prefer a discriminated union over multiple booleans and optional fields that allow impossible combinations. Keep the discriminant literal, required, and stable. Put only properties valid for a state on that member; do not make every member carry optional placeholders.
+
+Derive related state names or subsets from the union rather than restating them. For example, `RequestState<unknown>['status']` is the status union, and `Extract<RequestState<T>, { status: 'success' }>` selects the successful member.
+
+## Narrow known unions with control flow
+
+Use ordinary runtime checks directly when the value already has a precise union type:
+
+```ts
+type Notification =
+  | { kind: 'email'; address: string }
+  | { kind: 'sms'; phoneNumber: string };
+
+function destination(notification: Notification) {
+  if (notification.kind === 'email') {
+    return notification.address;
+  }
+  return notification.phoneNumber;
+}
+```
+
+The discriminant check narrows the first branch; the early return narrows the remainder. The same control-flow analysis understands equality, `typeof`, `instanceof`, `Array.isArray`, `in`, assignments, `if`/`else`, and `switch`. Prefer a discriminant for domain types under your control. Use `in` when a pre-existing structural union has distinct properties and no natural tag.
+
+Do not extract a one-use predicate merely to restate an inline check. Create a named guard when it expresses a reused semantic rule or performs multi-step boundary validation. An explicit `value is T` predicate is an unchecked promise that must be correct in both directions; it is not more type-safe than control flow the compiler can analyze itself.
+
+Normal guards can eliminate every member of a union, at which point the remaining value becomes `never`. A predicate such as `value is never` is almost always a type lie, not a useful guard. Use normal narrowing to reach `never`, then check the impossible remainder.
+
+## Enforce exhaustive decisions
+
+Keep one small project-standard terminator and use it at the impossible remainder of `switch` statements or `if` chains:
+
+```ts
+export function assertNever(value: never, message = 'Unexpected value'): never {
+  throw new TypeError(`${message}: ${String(value)}`);
+}
 
 function renderState<T>(state: RequestState<T>) {
   switch (state.status) {
@@ -385,15 +426,107 @@ function renderState<T>(state: RequestState<T>) {
       return `Loaded: ${String(state.data)}`;
     case 'failure':
       return state.error.message;
-    default: {
-      const exhaustive: never = state;
-      return exhaustive;
-    }
+    default:
+      return assertNever(state, 'Unknown request state');
   }
 }
 ```
 
-Prefer a union over multiple booleans and optional fields that allow impossible states. Keep the discriminant literal and stable.
+If every member is handled, control-flow analysis narrows `state` to `never` and the call compiles. Adding a member makes the argument fail to typecheck until its case is implemented. The throw also protects runtime code from unvalidated input, stale declarations, or client/server version skew. The explicit `: never` return is justified because it is the helper's control-flow contract.
+
+Do not use a generic `default` that returns a fallback for a closed domain; it masks newly added members. A bare throw catches unexpected runtime data but does not prove compile-time completeness because it accepts every type. `value satisfies never` can perform the static check without a helper, but it supplies no runtime policy by itself; prefer the reusable terminator when unexpected runtime values are possible or when it reads more clearly.
+
+Use a complete lookup instead of a `switch` when the operation is data mapping:
+
+```ts
+const stateLabels = {
+  idle: 'Idle',
+  loading: 'Loading',
+  success: 'Loaded',
+  failure: 'Failed',
+} as const satisfies Record<RequestState<unknown>['status'], string>;
+```
+
+Adding a status now fails at the table. This is often more readable and more reusable than repeating branching logic. An explicit function return type combined with `strictNullChecks`/`noImplicitReturns` can expose some incomplete paths, and a type-aware switch-exhaustiveness lint rule can find missing cases, but neither replaces a clear domain model.
+
+The typescript-eslint rule requires typed linting. Keep `considerDefaultExhaustiveForUnions: false` when new members must receive explicit cases; otherwise a generic default can mask them. Set `allowDefaultCaseForExhaustiveSwitch: false` only when redundant defaults are genuinely unwanted. If runtime values can exceed the compile-time union, retain the throwing default and permit it globally or with a focused rule exception.
+
+## Use `never` deliberately
+
+`never` is the bottom type: it represents a value that cannot occur. It is assignable to every type, no ordinary value is assignable to it, and it disappears from unions such as `Result | never`. These properties make it useful in a few focused roles.
+
+### Mark code that cannot complete normally
+
+```ts
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+function requireApiKey(apiKey: string | undefined) {
+  return apiKey ?? fail('API key is required');
+}
+```
+
+The call tells control-flow analysis that execution cannot continue through that branch, so the returned expression is `string`. Use `never` only when every path throws, exits, or loops forever. Use `void` when a function completes normally without producing a useful result. An async function that can never fulfill may return `Promise<never>`; do not use that type if it can resolve successfully.
+
+Inference has an intentional compatibility nuance: an unannotated throwing function declaration infers `void`, while a throwing function expression or arrow infers `never`; async forms similarly infer `Promise<void>` versus `Promise<never>`. Give shared declaration-style failure and exhaustiveness helpers an explicit `never` return so their control-flow contract is unambiguous. Continue inferring ordinary implementation returns.
+
+### Remove impossible members in type transformations
+
+Distributive conditional types use `never` to filter union members. Prefer the standard utilities `Exclude` and `Extract` when they express the operation. Use a custom conditional only for a domain-specific relationship:
+
+```ts
+type WithPayload<T> = T extends { payload: unknown } ? T : never;
+```
+
+Mapped types can remove keys by remapping an unwanted key to `never`:
+
+```ts
+type PickByValue<T, Value> = {
+  [K in keyof T as T[K] extends Value ? K : never]: T[K];
+};
+```
+
+Because conditional types distribute over a naked type parameter, `[T] extends [never]` is the reliable rare-case test for whether a type itself is `never`:
+
+```ts
+type IsNever<T> = [T] extends [never] ? true : false;
+```
+
+Use `IsNever` in type-library tests or a genuinely generic abstraction, not normal application code. A type-level API may also default a covariant result branch to `never` when “no result is possible” is the honest neutral member of a union. Name and document that meaning rather than exposing unexplained `never` diagnostics to callers.
+
+### Describe a callable that will not be invoked
+
+For type-level inspection or a generic constraint, this avoids `any` while accepting arbitrary parameter lists:
+
+```ts
+type AnyFunction = (...args: never[]) => unknown;
+```
+
+This is appropriate only when the implementation never calls the function, such as extracting its return type. If code invokes or wraps the function, capture its arguments and result with generic variadic tuples so the relationship is preserved.
+
+### Forbid a property only when no natural discriminant fits
+
+An optional `never` property can express an exclusive structural choice:
+
+```ts
+type LinkAction =
+  | { href: string; onClick?: never }
+  | { href?: never; onClick: () => void };
+```
+
+Prefer a named discriminant when the domain permits one; it narrows and explains better. Use the exclusive-property pattern for APIs whose runtime shape is already fixed, name the union clearly, and enable `exactOptionalPropertyTypes` so `property?: never` cannot be bypassed with an explicit `undefined`.
+
+### Treat unexpected `never` as a diagnostic
+
+An inferred `never` often means the compiler has no evidence or found a contradiction:
+
+- an empty mutable literal became `never[]`;
+- control flow eliminated every possible member;
+- an intersection or generic constraint was impossible;
+- a conditional type matched no union member or a mapped type removed every key.
+
+Investigate which relationship collapsed. Add inference evidence, correct the domain model, or fix the condition; do not reach first for `as never`. Outside an exhaustiveness helper or type-level constraint, a public parameter of type `never` creates an API nobody can call. `never` is not runtime validation, and a cast or explicit predicate that forces a value to `never` defeats the refactor protection it is meant to provide.
 
 ## Narrow boundary data safely
 
@@ -560,9 +693,27 @@ The localized assertion is justified by runtime validation. Export constructors/
 - Letting a default argument widen the authoritative generic instead of using `NoInfer`.
 - Losing correlation by using parallel unions such as `kind: Kinds; payload: Payloads`.
 - Modeling mutually exclusive states with optional fields and booleans.
+- Writing a reusable predicate for a one-line discriminant check instead of letting local control flow narrow the value.
+- Using a permissive `default` that prevents a new union member from producing an exhaustive-handling error.
+- Throwing from a default branch without checking that the remaining value is `never`.
+- Casting to `never`, declaring a `value is never` predicate, or otherwise forcing an impossible state instead of proving it.
+- Annotating a function `never` even though a path can complete or an async operation can fulfill.
+- Treating an unexpected `never` or `never[]` as something to silence instead of evidence of missing inference input or a contradictory type relationship.
+- Using optional `never` properties for exclusivity when a named discriminant would explain and narrow the domain better.
 - Assuming `satisfies` changes the expression's resulting type or performs runtime validation.
 - Assuming `readonly` or `as const` freezes runtime data.
 - Using a type predicate that proves only its true branch.
 - Casting `Object.keys` globally to `(keyof T)[]` even though runtime objects may have extra keys.
 - Applying `Pick`/`Omit` to a union without checking whether member-wise distribution is required.
 - Publishing a deep utility type whose error messages and compile cost exceed its value.
+
+## Primary references
+
+- [TypeScript narrowing, control-flow analysis, predicates, discriminated unions, and exhaustiveness](https://www.typescriptlang.org/docs/handbook/2/narrowing.html)
+- [TypeScript `never` semantics and return inference](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-0.html#the-never-type)
+- [TypeScript control-flow support for `never`-returning functions and assertion signatures](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#better-support-for-never-returning-functions)
+- [TypeScript inferred type predicates and their “if and only if” requirement](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-5.html#inferred-type-predicates)
+- [TypeScript conditional and distributive conditional types](https://www.typescriptlang.org/docs/handbook/2/conditional-types.html)
+- [TypeScript mapped-type key remapping and filtering](https://www.typescriptlang.org/docs/handbook/2/mapped-types.html)
+- [TypeScript `Exclude`, `Extract`, and other utility types](https://www.typescriptlang.org/docs/handbook/utility-types.html)
+- [typescript-eslint switch exhaustiveness rule and default-case tradeoffs](https://typescript-eslint.io/rules/switch-exhaustiveness-check/)
