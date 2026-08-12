@@ -83,7 +83,8 @@ Write an implementation comment when it preserves knowledge that cannot be expre
 - an invariant that must hold across several statements;
 - a compatibility, security, or performance constraint;
 - the relationship to an external protocol, defect, or specification;
-- a deliberately non-obvious algorithmic phase.
+- a deliberately non-obvious algorithmic phase;
+- the runtime evidence and typing limitation behind an unavoidable assertion, suppression, or intentional sentinel.
 
 Place the comment immediately before the code it governs. Explain why the code exists or what contract the phase maintains; do not translate each statement into English.
 
@@ -98,6 +99,8 @@ const validated = validateConfiguration(normalized);
 ```
 
 Do not number phase comments unless the order is itself a stable protocol or algorithm requirement. Numbered outlines become incorrect when steps are inserted or reordered.
+
+Place an escape-hatch comment directly above the exact expression. For a double assertion, `null!` sentinel, `as any`, lint suppression, or production `@ts-expect-error`, name the runtime fact that TypeScript cannot express, the inaccurate declaration, deliberately narrower construction contract, or compiler limitation, and the removal condition or upstream issue when available. Do not write only “TypeScript is wrong” or “safe cast.” A repeated explanation is evidence that the source declaration, module augmentation, or boundary adapter should be repaired once instead.
 
 ## Refactor before narrating
 
@@ -152,6 +155,7 @@ Treat public TSDoc as part of the API contract:
 - remove comments that no longer add information;
 - keep examples typechecked or executable when the project can support it;
 - link to an issue or external specification for a workaround, and state the condition for removing it;
+- remove or revise an escape-hatch comment when the declaration, compiler, or runtime contract changes;
 - write TODOs with a concrete reason and tracking reference when the project has an issue system;
 - use version control for history instead of narrating past implementations in current comments;
 - review comments for claims that types or tests could enforce more reliably.
@@ -184,6 +188,7 @@ Coverage rules can prove that a comment exists, not that it is useful or correct
 - Documenting a field group with a comment that tooling attaches only to the following property.
 - Leaving examples, defaults, units, links, error behavior, or TODOs stale after a refactor.
 - Treating `@throws` as an enforced exception type or a TSDoc assertion as runtime validation.
+- Leaving `as unknown as T`, `as any`, `null!`, or a suppression unexplained, so reviewers cannot verify the runtime proof or know when to remove it.
 - Enforcing raw documentation coverage before deciding which API surface actually requires documentation.
 
 ## Primary references

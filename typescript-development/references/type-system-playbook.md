@@ -15,14 +15,15 @@ Use this reference for non-trivial TypeScript design. Apply the skill's priority
 9. [Enforce exhaustive decisions](#enforce-exhaustive-decisions)
 10. [Use never deliberately](#use-never-deliberately)
 11. [Narrow boundary data safely](#narrow-boundary-data-safely)
-12. [Control assertions and escape hatches](#control-assertions-and-escape-hatches)
-13. [Represent mutability and variance](#represent-mutability-and-variance)
-14. [Use mapped and conditional types intentionally](#use-mapped-and-conditional-types-intentionally)
-15. [Use nominal distinctions only when valuable](#use-nominal-distinctions-only-when-valuable)
-16. [Handle async code and errors](#handle-async-code-and-errors)
-17. [Keep types readable and fast](#keep-types-readable-and-fast)
-18. [Recognize common failure modes](#recognize-common-failure-modes)
-19. [Primary references](#primary-references)
+12. [Repair type mismatches before asserting](#repair-type-mismatches-before-asserting)
+13. [Control assertions and escape hatches](#control-assertions-and-escape-hatches)
+14. [Represent mutability and variance](#represent-mutability-and-variance)
+15. [Use mapped and conditional types intentionally](#use-mapped-and-conditional-types-intentionally)
+16. [Use nominal distinctions only when valuable](#use-nominal-distinctions-only-when-valuable)
+17. [Handle async code and errors](#handle-async-code-and-errors)
+18. [Keep types readable and fast](#keep-types-readable-and-fast)
+19. [Recognize common failure modes](#recognize-common-failure-modes)
+20. [Primary references](#primary-references)
 
 ## Choose the source of truth
 
@@ -559,6 +560,53 @@ function assertString(value: unknown, name: string): asserts value is string {
 
 Assertion signatures require explicit return annotations because the annotation itself controls narrowing.
 
+## Repair type mismatches before asserting
+
+Treat a rejected assignment or assertion as a request to explain a relationship. Before overriding it:
+
+1. inspect the source declaration and the runtime value it describes;
+2. find lost inference, widened literals, missing generics, wrong overloads, or an incorrect augmentation;
+3. narrow or validate unions and boundary data;
+4. reconcile readonly versus mutable collections, tuples, brands, and library-specific wrappers;
+5. change the destination contract if it is the inaccurate side;
+6. reuse a sound project helper or add a focused adapter only after the relationship is understood.
+
+Do not mechanically replace one escape hatch with another. A non-null assertion, generic helper, overload, predicate, or `@ts-expect-error` can hide the same false claim as a cast.
+
+### Normalize nullish values truthfully
+
+Use `??`, not `||`, when only `null` and `undefined` mean absence. In the ordinary case, contextual and union inference already preserves the element type:
+
+```ts
+declare const maybeTags: string[] | null | undefined;
+
+const tags = maybeTags ?? [];
+```
+
+If this does not produce the needed type, diagnose why. Common causes are a source typed as `unknown` or `object`, a lost generic relationship, mutable/readonly disagreement, an exact tuple or brand, a union whose correlations were lost, or a dependency collection with runtime methods that a plain array does not have.
+
+For a genuinely repeated defaulting operation, require the fallback to be a real value of the inferred type:
+
+```ts
+function valueOr<T>(
+  value: T | null | undefined,
+  fallback: NoInfer<T>,
+) {
+  return value ?? fallback;
+}
+```
+
+`NoInfer<T>` keeps the nullable value authoritative and prevents the fallback from widening `T`. This helper accepts `[]` when `T` is an ordinary array and `{}` when `T` is a property bag whose fields are all optional. It correctly rejects them for non-empty tuples, required object shapes, brands, array subclasses, and library wrapper collections. For an exact subtype, require a fallback or factory that constructs that actual subtype. If consumers need only a broader view, return that honest view—such as `readonly Element[]`—instead of promising the wrapper type.
+
+Do not write a helper equivalent to either of these patterns:
+
+- `return value ?? ([] as T)` for arbitrary array-like `T`;
+- `return value ?? ({} as T)` for arbitrary `T extends object`.
+
+An empty array is not every tuple, branded collection, subclass, or library document array. An empty object does not satisfy arbitrary required properties. Hiding the assertion in a shared helper increases its blast radius and makes every call appear trustworthy. Overloads are appropriate only when every signature truthfully describes the same runtime implementation; they do not repair an impossible default.
+
+Search project utilities and the dependency's supported APIs before introducing a helper. Prefer a boundary-specific name when behavior is domain-specific. Test mutable and readonly inputs, nullish inputs, exact subtypes, and the runtime identity or methods of library collections that must be preserved.
+
 ## Control assertions and escape hatches
 
 Allow `as` only for:
@@ -569,11 +617,32 @@ Allow `as` only for:
 - a known compiler limitation documented by a focused test;
 - intentional broadening that cannot be expressed more clearly with an annotation.
 
-Keep assertions local. Never export asserted raw data as though it were validated. Avoid double assertions such as `value as unknown as T`; they erase the compiler's objection instead of answering it.
+A normal assertion is permitted only when the source and target overlap enough that one could be a more or less specific view of the other. `value as unknown as T` deliberately bypasses that compiler check: the intermediate `unknown` is assignable from the source, and the second assertion can claim an unrelated target. It is no safer than `as any` in this use because no narrowing occurs, and it can be worse by giving downstream code a precise but fabricated type. It can invent fields, methods, discriminants, brands, mutability, or collection behavior and suppress the refactor errors that should expose the mismatch.
 
-Use non-null `!` only when lifecycle or framework behavior proves presence and no safer initialization/guard can express it. Prefer narrowing, constructor initialization, or `Map.get` handling.
+Keep assertions local and never export asserted raw data as though it were validated. Do not use a generic assertion helper to make arbitrary conversions look routine. Permit a double assertion only when verified runtime identity conflicts with an external declaration or a known compiler limitation and no correction, augmentation, narrowing, validation, overload, or typed adapter can express the fact. Every remaining double assertion must have an adjacent comment that states:
 
-Use `@ts-expect-error` only for an intentional negative type test or a documented external typing defect. Add the reason and ensure the expected error disappears if the underlying problem is fixed. Do not use `@ts-ignore`.
+- the runtime evidence that makes the target true;
+- why the source declaration or compiler model is insufficient;
+- an issue, specification, or removal condition when one exists.
+
+Add a focused type regression and a runtime test of the asserted behavior. Confine any lint suppression to the exact expression.
+
+Use non-null `!` to consume a possibly nullish value only when lifecycle or framework behavior proves presence and no safer initialization or guard can express it. Prefer narrowing, constructor initialization, an assertion function, or explicit missing-value handling.
+
+A literal `null!` is a distinct, narrowly permitted escape hatch when the program intentionally must emit `null` and the immediate consumer's verified runtime contract accepts the sentinel, but the destination type intentionally omits that construction-only value or has an inaccurate declaration:
+
+```ts
+renderRows([
+  firstRow,
+  // The renderer consumes null as a separator before rows reach typed callbacks.
+  null!,
+  secondRow,
+]);
+```
+
+Under strict TypeScript checking, `null!` has type `never`, which is assignable to the destination, while the emitted JavaScript value remains `null`. It does not prove non-nullness or make the runtime safe. Use it only on the exact sentinel expression, always explain the mismatch, and test the consuming runtime path. Ensure the immediate consumer removes or interprets the sentinel before code promised a non-null value can observe it. Do not use it to read a nullable value, initialize a field that is not ready, or make ordinary application types deny a real `null` state. If the pattern repeats, repair or augment the declaration, create a boundary-specific adapter with an honest input type, or contribute the upstream fix.
+
+Use `@ts-expect-error` only for an intentional negative type test or a documented external typing defect. It is useful for a temporary defect because it reports when the suppression becomes unnecessary, but it suppresses every diagnostic on the following line; isolate the expression and include the reason. Do not use `@ts-ignore`.
 
 ## Represent mutability and variance
 
@@ -692,7 +761,10 @@ The localized assertion is justified by runtime validation. Export constructors/
 - Exporting a huge anonymous inferred type that accidentally becomes a public API.
 - Replacing a known type with `unknown` and forcing every consumer to narrow again.
 - Using `{}`, boxed primitive types, or `Function` when `object`, primitive types, or a precise call signature is intended.
-- Replacing an error with `any`, a double assertion, or a non-null assertion.
+- Replacing an error with `any`, a double assertion, a non-null assertion, a misleading overload, or an assertion hidden inside a generic helper.
+- Returning `[] as T` or `{} as T` for an arbitrary generic even though `T` may require tuple elements, properties, a brand, a subclass, or library-specific runtime behavior.
+- Using `||` for a nullish default and accidentally replacing valid falsy values.
+- Using `null!` as routine null handling instead of reserving it for a documented intentional sentinel consumed at a verified boundary.
 - Creating a generic whose parameter does not relate values.
 - Letting a default argument widen the authoritative generic instead of using `NoInfer`.
 - Losing correlation by using parallel unions such as `kind: Kinds; payload: Payloads`.
@@ -719,5 +791,12 @@ The localized assertion is justified by runtime validation. Export constructors/
 - [TypeScript inferred type predicates and their “if and only if” requirement](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-5.html#inferred-type-predicates)
 - [TypeScript conditional and distributive conditional types](https://www.typescriptlang.org/docs/handbook/2/conditional-types.html)
 - [TypeScript mapped-type key remapping and filtering](https://www.typescriptlang.org/docs/handbook/2/mapped-types.html)
-- [TypeScript `Exclude`, `Extract`, and other utility types](https://www.typescriptlang.org/docs/handbook/utility-types.html)
+- [TypeScript `NoInfer`, `Exclude`, `Extract`, and other utility types](https://www.typescriptlang.org/docs/handbook/utility-types.html#noinfertype)
+- [TypeScript type assertions and non-null assertions](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-assertions)
+- [TypeScript `@ts-expect-error` behavior and tradeoffs](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-9.html#ts-expect-error-comments)
+- [typescript-eslint unsafe type assertion rule](https://typescript-eslint.io/rules/no-unsafe-type-assertion/)
+- [typescript-eslint non-null assertion rule](https://typescript-eslint.io/rules/no-non-null-assertion/)
 - [typescript-eslint switch exhaustiveness rule and default-case tradeoffs](https://typescript-eslint.io/rules/switch-exhaustiveness-check/)
+- [Google TypeScript style guide on assertions, double assertions, and explanatory comments](https://google.github.io/styleguide/tsguide.html#type-and-non-nullability-assertions)
+- [Effective TypeScript: sources of unsoundness and limiting assertion scope](https://effectivetypescript.com/2021/05/06/unsoundness/)
+- [Mongoose raw versus hydrated subdocument-array types](https://mongoosejs.com/docs/typescript/subdocuments.html#subdocument-arrays)

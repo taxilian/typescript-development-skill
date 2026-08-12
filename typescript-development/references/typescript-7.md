@@ -154,6 +154,9 @@ For linting, prefer type-aware strict presets when their parser supports the com
 
 - `no-explicit-any` and the `no-unsafe-*` family;
 - `no-unnecessary-type-assertion` and `no-unsafe-type-assertion`;
+- `consistent-type-assertions` configured to reject object/array literal assertions where that matches project policy;
+- `no-non-null-assertion` when the project wants non-null escape hatches reviewed individually;
+- `no-non-null-asserted-optional-chain` and `no-non-null-asserted-nullish-coalescing`;
 - `prefer-as-const`;
 - `switch-exhaustiveness-check`;
 - `consistent-type-imports`;
@@ -161,6 +164,8 @@ For linting, prefer type-aware strict presets when their parser supports the com
 - `no-unnecessary-type-parameters` and unnecessary type-argument checks where available.
 
 Avoid a blanket `explicit-function-return-type` rule for inference-first application code. Configure exceptions for public APIs if that is the project's chosen contract policy.
+
+Prefer `no-unsafe-type-assertion` where current parser support is available; it catches assertions that narrow to a less safe type, including many attempts to assert from `any`, `unknown`, or an unconstrained generic. Lint is a backstop, not proof: a double assertion can be hidden in a helper, an overload can lie without using `as`, and a documented `null!` sentinel may require a narrowly scoped `no-non-null-assertion` disable. Require the same runtime evidence and tests during review.
 
 ## Migrate in a controlled sequence
 
@@ -212,6 +217,9 @@ TypeScript 7 also aligns JavaScript/JSDoc analysis more closely with TypeScript.
 - [TypeScript 6.0 release notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)
 - [TSConfig reference](https://www.typescriptlang.org/tsconfig/)
 - [typescript-eslint typed linting](https://typescript-eslint.io/getting-started/typed-linting/)
+- [typescript-eslint consistent type assertion rule](https://typescript-eslint.io/rules/consistent-type-assertions/)
+- [typescript-eslint unsafe type assertion rule](https://typescript-eslint.io/rules/no-unsafe-type-assertion/)
+- [typescript-eslint non-null assertion rules](https://typescript-eslint.io/rules/no-non-null-assertion/)
 - [typescript-eslint compiler peer dependency](https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/typescript-estree/package.json)
 
 Use current official documentation for every version/tooling claim. Prefer Context7's official TypeScript and typescript-eslint sources where available; use official TypeScript websites and repositories as the fallback.

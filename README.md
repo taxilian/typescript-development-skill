@@ -10,6 +10,7 @@ The skill covers:
 - definition-driven and schema-driven types;
 - global, module, and framework type augmentation;
 - `satisfies`, `as const`, type guards, and safe runtime boundaries;
+- type-mismatch repair, sound nullish defaults, and tightly controlled assertion escape hatches;
 - control-flow narrowing, `never`, and refactor-safe exhaustiveness;
 - TSDoc, public API documentation, implementation comments, and descriptive naming;
 - DRY domain-model composition;

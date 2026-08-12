@@ -1,6 +1,6 @@
 ---
 name: typescript-development
-description: Develop, refactor, review, debug, document, configure, run, and migrate TypeScript 7 code with runtime-faithful, readable, inference-first, strict, and DRY type design. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, TSDoc or JSDoc, TypeDoc, public API documentation, implementation comments, descriptive naming, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, control-flow narrowing, discriminated unions, never and exhaustiveness, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
+description: Develop, refactor, review, debug, document, configure, run, and migrate TypeScript 7 code with runtime-faithful, readable, inference-first, strict, and DRY type design. Use for .ts, .tsx, .mts, .cts, .d.ts, tsconfig files, TypeScript package APIs, TSDoc or JSDoc, TypeDoc, public API documentation, implementation comments, descriptive naming, type-heavy application or library code, advanced generics, schema-driven or definition-driven inference, control-flow narrowing, discriminated unions, never and exhaustiveness, declaration merging, global or module augmentation, ambient modules, globalThis, Node and Express extension points, inferred configuration, repairing type mismatches, safe nullish defaults, controlling assertions and escape hatches, eliminating any or unnecessary unknown, shared domain models, TypeScript 6-to-7 migration, compiler and type errors, or development loops involving tsc watch mode, tsc-watch, tsx, process restarts, and package scripts.
 ---
 
 # TypeScript Development
@@ -40,7 +40,7 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 6. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
 7. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
 8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Keep `any` inside the smallest documented interoperability adapter when no precise alternative exists.
-9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Never use them merely to silence the compiler.
+9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Repair the rejected type relationship before considering an escape hatch. Treat `as unknown as T`, `as any`, generic `as T`, and literal non-null assertions such as `null!` as exceptional and document the exact runtime fact when one is unavoidable.
 10. Prefer interfaces and `extends` for named object hierarchies. Prefer type aliases for unions, tuples, primitives, mapped types, conditional types, and other transformations.
 11. Model finite states with discriminated unions and make decisions over them exhaustive. Treat an unexpected `never` as a diagnostic to investigate, not a type to cast away.
 12. Document public contracts with TSDoc and implementation intent with `//` comments. Add semantic information rather than restating names and types; rename or refactor before compensating with narration.
@@ -49,7 +49,7 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 
 Use this escalation order when the compiler needs help:
 
-`inference` → `satisfies` → `annotation` → localized `assertion` → isolated `any`
+`correct source type` → `inference and narrowing` → `satisfies or annotation` → `typed helper or adapter` → localized `assertion` → isolated `any`
 
 ## Follow the agentic workflow
 
@@ -61,6 +61,7 @@ Use this escalation order when the compiler needs help:
 - Identify existing typecheck, lint, test, and build scripts. Preserve the project's package manager and conventions.
 - Identify the production runtime and the current owner of type-checking, emission, source execution, and process restarts. Avoid adding a second watcher for the same responsibility.
 - Inspect existing `.d.ts` files and dependency declarations before augmenting a global or module. Find the documented open interface and the exact module specifier that owns it.
+- Search existing project utilities and dependency APIs before adding a fallback, coercion, normalization, or assertion helper. Reuse the established runtime behavior and naming when it is sound.
 - Inspect existing TSDoc/JSDoc style, generated-documentation tooling, lint rules, declaration output, and documentation coverage expectations before adding comments or tags.
 - Inspect nearby types and values before inventing a new type. Search for the domain concept, not only the proposed identifier.
 
@@ -95,6 +96,8 @@ Choose value-first design when runtime data is authoritative. Choose a named int
 | Reusable object hierarchy | `interface Child extends Parent` | The result is a union or type-level transformation |
 | Literal-preserving generic API | `const` type parameter | Callers need widening or mutation |
 | Generic inference has two candidate sources | `NoInfer<T>` on the non-authoritative source | Separate type parameters represent genuinely different values |
+| Nullable value needs a valid default | Direct `??` with a genuinely assignable fallback | The pattern repeats or an exact subtype needs a boundary-specific factory/helper |
+| Compiler rejects a proposed conversion | Correct the source type, narrow, validate, or preserve the lost generic relationship | Runtime evidence proves an external declaration or compiler limitation is wrong; localize and document an escape hatch |
 | Known discriminated union inside a function | Inline `if`, `switch`, equality, or `in` narrowing | A reusable semantic check or complex boundary validation justifies a named guard |
 | Finite decision over a union or enum | Explicit cases plus a reusable `assertNever`-style terminator | A complete `Record` lookup communicates a data mapping more clearly |
 | Complete lookup over finite keys | Literal with `satisfies Record<Keys, Value>` | Missing keys have a deliberate, validated runtime fallback |
@@ -198,6 +201,10 @@ If `any` is unavoidable, require all of the following:
 - add a concise comment naming the external limitation;
 - keep `no-explicit-any` and the `no-unsafe-*` lint family enabled elsewhere when compatible tooling is available.
 
+When the compiler rejects a conversion, read the diagnostic as evidence of a broken or missing relationship. Inspect the source declaration, lost generic, mutability, tuple or branded subtype, library wrapper, and nullability before writing `as`. Prefer direct `??` for a valid nullish default. If the pattern repeats, use an existing helper or add a typed helper whose fallback is actually assignable to its result; never hide `[] as T` or `{} as T` inside a generic utility.
+
+Permit `null!` only as a deliberately documented way to emit a real `null` sentinel where the immediate consumer's verified runtime contract accepts it but the destination type intentionally cannot represent that construction-only value or has an inaccurate declaration. It is not null-safety: under strict checking the expression is assignable because it becomes `never`, while the JavaScript value remains `null`. Keep it on the exact expression, explain the mismatch, and cover the runtime path. Do not let the sentinel escape to code promised a non-null value; repair the type, declaration, or boundary when the exception repeats.
+
 ### 6. Design generics for inference
 
 - Make each type parameter relate at least two meaningful positions. Remove decorative generics.
@@ -244,6 +251,7 @@ Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Pre
 - When documentation tooling exists, validate TSDoc syntax, links, intended public coverage, and generated output. Keep code examples typechecked or executable when practical.
 - Review changed comments beside changed behavior. Remove stale narration and verify defaults, units, optional semantics, side effects, errors, deprecations, and TODO references.
 - Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, explicit return types, and unusual `never` uses. Justify each exception.
+- Search specifically for `as unknown as`, `as any`, `null!`, and generic helpers that return an asserted `T`. Require an adjacent reason and focused type/runtime coverage for every exception that remains.
 - Do not weaken compiler or lint settings to make a local error disappear.
 
 ### 10. Report the result

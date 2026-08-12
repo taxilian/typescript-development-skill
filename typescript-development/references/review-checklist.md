@@ -11,14 +11,15 @@ Use this checklist before finishing a material implementation, refactor, migrati
 5. [DRY type composition](#dry-type-composition)
 6. [Generics and advanced types](#generics-and-advanced-types)
 7. [Boundary safety](#boundary-safety)
-8. [State, control flow, and mutability](#state-control-flow-and-mutability)
-9. [Documentation and comments](#documentation-and-comments)
-10. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
-11. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
-12. [Development loop](#development-loop)
-13. [Compiler health and readability](#compiler-health-and-readability)
-14. [Verification](#verification)
-15. [Escape-hatch ledger](#escape-hatch-ledger)
+8. [Type repair, defaults, and assertions](#type-repair-defaults-and-assertions)
+9. [State, control flow, and mutability](#state-control-flow-and-mutability)
+10. [Documentation and comments](#documentation-and-comments)
+11. [TypeScript 7 configuration and tooling](#typescript-7-configuration-and-tooling)
+12. [Augmentation and ambient declarations](#augmentation-and-ambient-declarations)
+13. [Development loop](#development-loop)
+14. [Compiler health and readability](#compiler-health-and-readability)
+15. [Verification](#verification)
+16. [Escape-hatch ledger](#escape-hatch-ledger)
 
 ## Priority gate
 
@@ -98,8 +99,21 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Treat caught errors as `unknown` until narrowed.
 - [ ] Prevent `any` from leaking out of external adapters.
 - [ ] Treat assertions, brands, and non-null assertions as documented proof obligations.
-- [ ] Reject double assertions and `@ts-ignore`.
+- [ ] Reject `@ts-ignore`.
 - [ ] Use `@ts-expect-error` only for focused negative tests or documented external defects.
+
+## Type repair, defaults, and assertions
+
+- [ ] Read the compiler diagnostic and repair the source type, generic relationship, augmentation, narrowing, mutability, or destination contract before asserting.
+- [ ] Search project utilities and supported dependency APIs before introducing a coercion, normalization, fallback, or assertion helper.
+- [ ] Use direct `??` for ordinary nullish defaults; avoid `||` when valid falsy values exist.
+- [ ] Require a fallback to be genuinely assignable to the inferred result type; use `NoInfer` when the nullable value must be the only inference source.
+- [ ] Reject generic helpers that manufacture arbitrary `T` with `[] as T`, `{} as T`, a double assertion, a predicate, or a misleading overload.
+- [ ] Preserve tuple, brand, subclass, readonly/mutable, and library-wrapper behavior, or deliberately return an honest broader view.
+- [ ] Treat `as unknown as T` as equivalent to bypassing the compiler's overlap check, not as safe use of `unknown`.
+- [ ] Permit a double assertion only for verified external declaration/compiler limitations after safer repairs are exhausted; require an adjacent proof, removal condition, type test, and runtime test.
+- [ ] Use `null!` only for an intentional runtime `null` sentinel consumed by a verified boundary whose destination type cannot represent it; never use it as ordinary null handling or let it escape as a supposedly non-null value.
+- [ ] Repair or augment an inaccurate declaration, or add a boundary-specific adapter, when an exception repeats.
 
 ## State, control flow, and mutability
 
@@ -193,6 +207,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Temporarily add a union member or lookup key and confirm every required exhaustive branch/table fails to typecheck.
 - [ ] Verify non-returning helpers narrow following expressions and still throw or halt at runtime.
 - [ ] Test runtime validation independently from compile-time types.
+- [ ] Test nullish helpers against mutable/readonly values, exact subtypes, and any library collection identity or methods they promise to preserve.
+- [ ] Test every assertion against the runtime invariant it claims; type-only success is insufficient.
 - [ ] Review the final diff for behavior changes and unrelated config churn.
 
 ## Escape-hatch ledger
@@ -205,7 +221,10 @@ Search the final diff for each item and record the reason for every new occurren
 - [ ] `unknown`;
 - [ ] `any`;
 - [ ] `as` assertion;
+- [ ] `as unknown as` or `as any`;
 - [ ] non-null `!`;
+- [ ] literal `null!` or `undefined!` sentinel;
+- [ ] generic helper or overload that returns `T` from a fallback;
 - [ ] `@ts-expect-error`;
 - [ ] broad string/number index signature;
 - [ ] duplicated domain field;
