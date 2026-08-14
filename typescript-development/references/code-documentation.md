@@ -84,7 +84,7 @@ Write an implementation comment when it preserves knowledge that cannot be expre
 - a compatibility, security, or performance constraint;
 - the relationship to an external protocol, defect, or specification;
 - a deliberately non-obvious algorithmic phase;
-- the runtime evidence and typing limitation behind an unavoidable assertion, suppression, or intentional sentinel.
+- the runtime evidence, scoped test assumption, and containment behind a non-obvious assertion, suppression, or intentional sentinel.
 
 Place the comment immediately before the code it governs. Explain why the code exists or what contract the phase maintains; do not translate each statement into English.
 
@@ -100,7 +100,7 @@ const validated = validateConfiguration(normalized);
 
 Do not number phase comments unless the order is itself a stable protocol or algorithm requirement. Numbered outlines become incorrect when steps are inserted or reordered.
 
-Place an escape-hatch comment directly above the exact expression. For a double assertion, `null!` sentinel, `as any`, lint suppression, or production `@ts-expect-error`, name the runtime fact that TypeScript cannot express, the inaccurate declaration, deliberately narrower construction contract, or compiler limitation, and the removal condition or upstream issue when available. Do not write only “TypeScript is wrong” or “safe cast.” A repeated explanation is evidence that the source declaration, module augmentation, or boundary adapter should be repaired once instead.
+When an escape hatch is not self-explanatory in its immediate context, place a comment directly above the exact expression. For a double assertion, `null!` sentinel, `as any`, lint suppression, or production `@ts-expect-error`, name the runtime fact, deliberately partial/invalid test substitute, inaccurate declaration, narrower construction contract, or compiler limitation involved. Add a removal condition or upstream issue when one exists. Do not write only “TypeScript is wrong” or “safe cast.” A focused invalid-input test may make a one-line `as any` obvious without a separate comment; a repeated explanation is evidence that the source declaration, module augmentation, or boundary adapter should be repaired once instead.
 
 ## Refactor before narrating
 
@@ -188,7 +188,7 @@ Coverage rules can prove that a comment exists, not that it is useful or correct
 - Documenting a field group with a comment that tooling attaches only to the following property.
 - Leaving examples, defaults, units, links, error behavior, or TODOs stale after a refactor.
 - Treating `@throws` as an enforced exception type or a TSDoc assertion as runtime validation.
-- Leaving `as unknown as T`, `as any`, `null!`, or a suppression unexplained, so reviewers cannot verify the runtime proof or know when to remove it.
+- Leaving a non-obvious `as unknown as T`, `as any`, `null!`, or suppression unexplained, so reviewers cannot verify its runtime proof, test limitation, containment, or removal condition.
 - Enforcing raw documentation coverage before deciding which API surface actually requires documentation.
 
 ## Primary references

@@ -44,7 +44,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 ## Inference and contracts
 
 - [ ] Infer local function returns and local values.
-- [ ] Give each explicit return annotation a concrete reason: public contract, recursion, intentional abstraction, `isolatedDeclarations`, overload/assertion signature, or measured performance.
+- [ ] Give each explicit return annotation a concrete reason: public contract, recursion, intentional abstraction, containment of a localized escape hatch, `isolatedDeclarations`, overload/assertion signature, or measured performance.
 - [ ] Explicitly annotate a shared failure or exhaustiveness helper with `never`; verify that every path truly cannot complete normally.
 - [ ] Use contextual typing for callbacks rather than repeating parameter types.
 - [ ] Prevent inferred public declarations from exposing private names, accidental literals, or giant anonymous structures.
@@ -97,7 +97,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Treat a predicate claiming `value is never` as a likely type lie; normal guards should narrow an impossible remainder to `never`.
 - [ ] Avoid truthiness narrowing when valid values can be `0`, `''`, or `false`.
 - [ ] Treat caught errors as `unknown` until narrowed.
-- [ ] Prevent `any` from leaking out of external adapters.
+- [ ] Prevent `any` from escaping its typed containment boundary through declarations, inferred returns, generics, overloads, callbacks, stored values, or ordinary business logic.
 - [ ] Treat assertions, brands, and non-null assertions as documented proof obligations.
 - [ ] Reject `@ts-ignore`.
 - [ ] Use `@ts-expect-error` only for focused negative tests or documented external defects.
@@ -111,7 +111,11 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Reject generic helpers that manufacture arbitrary `T` with `[] as T`, `{} as T`, a double assertion, a predicate, or a misleading overload.
 - [ ] Preserve tuple, brand, subclass, readonly/mutable, and library-wrapper behavior, or deliberately return an honest broader view.
 - [ ] Treat `as unknown as T` as equivalent to bypassing the compiler's overlap check, not as safe use of `unknown`.
-- [ ] Permit a double assertion only for verified external declaration/compiler limitations after safer repairs are exhausted; require an adjacent proof, removal condition, type test, and runtime test.
+- [ ] Give `as any` and `as unknown as T` the same justification threshold, but choose between them by their useful result type; do not use a longer target that changes nothing.
+- [ ] Permit `any` only to suspend one understood check; pin its result immediately with a trustworthy typed boundary and prevent arbitrary unchecked operations around it.
+- [ ] Verify a real runtime invariant, a staged construction guarantee completed before escape, or a focused test substitute whose deliberate mismatch cannot affect the behavior under test.
+- [ ] Keep staged construction short and unobservable; prefer `Partial<T>` or a builder when it preserves useful completeness checks.
+- [ ] Add comments and focused type/runtime tests in proportion to how non-obvious, reusable, and risky the escape hatch is; do not require ceremony for an obvious one-line invalid-input test.
 - [ ] Use `null!` only for an intentional runtime `null` sentinel consumed by a verified boundary whose destination type cannot represent it; never use it as ordinary null handling or let it escape as a supposedly non-null value.
 - [ ] Repair or augment an inaccurate declaration, or add a boundary-specific adapter, when an exception repeats.
 
@@ -208,7 +212,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Verify non-returning helpers narrow following expressions and still throw or halt at runtime.
 - [ ] Test runtime validation independently from compile-time types.
 - [ ] Test nullish helpers against mutable/readonly values, exact subtypes, and any library collection identity or methods they promise to preserve.
-- [ ] Test every assertion against the runtime invariant it claims; type-only success is insufficient.
+- [ ] Test assertions against the runtime invariant or scoped test assumption they claim; type-only success is insufficient for reusable runtime behavior.
 - [ ] Review the final diff for behavior changes and unrelated config churn.
 
 ## Escape-hatch ledger

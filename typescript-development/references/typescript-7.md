@@ -165,7 +165,7 @@ For linting, prefer type-aware strict presets when their parser supports the com
 
 Avoid a blanket `explicit-function-return-type` rule for inference-first application code. Configure exceptions for public APIs if that is the project's chosen contract policy.
 
-Prefer `no-unsafe-type-assertion` where current parser support is available; it catches assertions that narrow to a less safe type, including many attempts to assert from `any`, `unknown`, or an unconstrained generic. Lint is a backstop, not proof: a double assertion can be hidden in a helper, an overload can lie without using `as`, and a documented `null!` sentinel may require a narrowly scoped `no-non-null-assertion` disable. Require the same runtime evidence and tests during review.
+Prefer `no-unsafe-type-assertion` where current parser support is available; it catches assertions that narrow to a less safe type, including many attempts to assert from `any`, `unknown`, or an unconstrained generic. Lint is a backstop, not proof: a double assertion can be hidden in a helper, an overload can lie without using `as`, and a justified `as any` or `null!` may require a narrowly scoped disable. Review each disable for one-check containment and require comments or tests in proportion to the invariant and blast radius; do not disable a rule project-wide merely to admit a rare exception.
 
 ## Migrate in a controlled sequence
 

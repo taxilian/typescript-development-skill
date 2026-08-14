@@ -11,7 +11,7 @@ Build code whose runtime behavior and domain relationships the compiler describe
 
 Use this order to resolve tradeoffs:
 
-1. **Runtime truth and domain correctness.** Model values the program can actually receive, validate untrusted inputs, and never use an assertion or predicate to tell a convenient lie.
+1. **Runtime truth and domain correctness.** Model values the program can actually receive, validate untrusted inputs, and never let an assertion or predicate make an unchecked mismatch escape its deliberate containment boundary.
 2. **Clarity and intuitive use.** Optimize the whole abstraction, especially its call sites. Accept sophisticated internal types when they make consuming code simpler, safer, and more natural; localize them behind clear names, concise documentation, focused type tests, and actionable diagnostics.
 3. **One source of truth and reuse.** Derive linked values and types instead of copying them, but name or simplify a derivation when readers would otherwise have to decode it repeatedly.
 4. **Refactor safety.** Make new union members, keys, states, and schema fields produce useful errors at every decision or lookup that must change.
@@ -39,8 +39,8 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 5. Keep one authoritative definition. Derive related types with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension.
 6. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
 7. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
-8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Keep `any` inside the smallest documented interoperability adapter when no precise alternative exists.
-9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Repair the rejected type relationship before considering an escape hatch. Treat `as unknown as T`, `as any`, generic `as T`, and literal non-null assertions such as `null!` as exceptional and document the exact runtime fact when one is unavoidable.
+8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Use `any` rarely, as the smallest clear suspension of checking for one understood relationship; resume typed code immediately and prevent it from leaking through declarations, inferred returns, generics, overloads, callbacks, or stored values.
+9. Treat type assertions, explicit predicates, assertion signatures, and non-null assertions as proof obligations. Repair the rejected type relationship before considering an escape hatch. Apply the same justification threshold to `as any` and `as unknown as T`, then use the shortest form that preserves useful downstream types. Make the runtime invariant or deliberately limited test substitute evident in context and comment only when it is not obvious.
 10. Prefer interfaces and `extends` for named object hierarchies. Prefer type aliases for unions, tuples, primitives, mapped types, conditional types, and other transformations.
 11. Model finite states with discriminated unions and make decisions over them exhaustive. Treat an unexpected `never` as a diagnostic to investigate, not a type to cast away.
 12. Document public contracts with TSDoc and implementation intent with `//` comments. Add semantic information rather than restating names and types; rename or refactor before compensating with narration.
@@ -97,7 +97,7 @@ Choose value-first design when runtime data is authoritative. Choose a named int
 | Literal-preserving generic API | `const` type parameter | Callers need widening or mutation |
 | Generic inference has two candidate sources | `NoInfer<T>` on the non-authoritative source | Separate type parameters represent genuinely different values |
 | Nullable value needs a valid default | Direct `??` with a genuinely assignable fallback | The pattern repeats or an exact subtype needs a boundary-specific factory/helper |
-| Compiler rejects a proposed conversion | Correct the source type, narrow, validate, or preserve the lost generic relationship | Runtime evidence proves an external declaration or compiler limitation is wrong; localize and document an escape hatch |
+| Compiler rejects a proposed conversion | Correct the source type, narrow, validate, or preserve the lost generic relationship | A proven runtime invariant or deliberately limited test/implementation boundary makes a localized escape clearer without weakening surrounding types |
 | Known discriminated union inside a function | Inline `if`, `switch`, equality, or `in` narrowing | A reusable semantic check or complex boundary validation justifies a named guard |
 | Finite decision over a union or enum | Explicit cases plus a reusable `assertNever`-style terminator | A complete `Record` lookup communicates a data mapping more clearly |
 | Complete lookup over finite keys | Literal with `satisfies Record<Keys, Value>` | Missing keys have a deliberate, validated runtime fallback |
@@ -193,13 +193,7 @@ export function parseWidgetPayload(text: string) {
 
 Prefer inferred type predicates when TypeScript can prove them. Treat explicit `value is T` and `asserts value is T` signatures as handwritten promises and test both their true and false cases.
 
-If `any` is unavoidable, require all of the following:
-
-- place it in an adapter at an untyped dependency or migration boundary;
-- prevent it from appearing in exported types or normal business logic;
-- validate or convert it before returning;
-- add a concise comment naming the external limitation;
-- keep `no-explicit-any` and the `no-unsafe-*` lint family enabled elsewhere when compatible tooling is available.
+Permit `any` only when it disables one understood check rather than an area of the program. Pin the result immediately with a trustworthy annotation, non-generic parameter, explicit return contract, or equally clear typed boundary. Confirm that it cannot alter an inferred return, generic argument, overload choice, callback, stored property, or emitted declaration. Require a proven runtime invariant, a staged construction guarantee completed before escape, or a deliberately partial/invalid test substitute whose mismatch is irrelevant to the behavior under test. Prefer a precise model when it recovers meaningful checking, but do not add elaborate types or a longer double assertion that changes no useful type behavior. Keep `no-explicit-any` and the `no-unsafe-*` lint family enabled where compatible, with narrow reviewed exceptions.
 
 When the compiler rejects a conversion, read the diagnostic as evidence of a broken or missing relationship. Inspect the source declaration, lost generic, mutability, tuple or branded subtype, library wrapper, and nullability before writing `as`. Prefer direct `??` for a valid nullish default. If the pattern repeats, use an existing helper or add a typed helper whose fallback is actually assignable to its result; never hide `[] as T` or `{} as T` inside a generic utility.
 
@@ -251,7 +245,7 @@ Do not use truthiness to narrow when `0`, `''`, or `false` is a valid value. Pre
 - When documentation tooling exists, validate TSDoc syntax, links, intended public coverage, and generated output. Keep code examples typechecked or executable when practical.
 - Review changed comments beside changed behavior. Remove stale narration and verify defaults, units, optional semantics, side effects, errors, deprecations, and TODO references.
 - Search the diff for new `any`, `unknown`, `as`, `!`, `@ts-ignore`, duplicated fields, broad index signatures, explicit return types, and unusual `never` uses. Justify each exception.
-- Search specifically for `as unknown as`, `as any`, `null!`, and generic helpers that return an asserted `T`. Require an adjacent reason and focused type/runtime coverage for every exception that remains.
+- Search specifically for `as unknown as`, `as any`, `null!`, and generic helpers that return an asserted `T`. Verify typed containment and a locally evident reason; add comments and focused type/runtime coverage in proportion to the non-obvious invariant and its blast radius.
 - Do not weaken compiler or lint settings to make a local error disappear.
 
 ### 10. Report the result

@@ -199,6 +199,7 @@ Annotate parameters when they are not contextually typed; infer the return. A re
 - prevents an accidental API change;
 - breaks direct or indirect recursive inference;
 - describes an overload or assertion function;
+- contains a localized escape hatch that would otherwise contaminate the inferred return;
 - is required by `isolatedDeclarations`;
 - reduces declaration size or compiler work in a measured hotspot.
 
@@ -615,17 +616,46 @@ Allow `as` only for:
 - a nominal brand applied by a validated constructor;
 - interop with an incomplete or incorrect external declaration;
 - a known compiler limitation documented by a focused test;
-- intentional broadening that cannot be expressed more clearly with an annotation.
+- intentional broadening that cannot be expressed more clearly with an annotation;
+- a focused test that deliberately supplies invalid input or a partial substitute;
+- short staged construction or an implementation detail behind a truthful typed contract when TypeScript cannot express the local relationship clearly.
 
-A normal assertion is permitted only when the source and target overlap enough that one could be a more or less specific view of the other. `value as unknown as T` deliberately bypasses that compiler check: the intermediate `unknown` is assignable from the source, and the second assertion can claim an unrelated target. It is no safer than `as any` in this use because no narrowing occurs, and it can be worse by giving downstream code a precise but fabricated type. It can invent fields, methods, discriminants, brands, mutability, or collection behavior and suppress the refactor errors that should expose the mismatch.
+### Contain rare uses of `any`
 
-Keep assertions local and never export asserted raw data as though it were validated. Do not use a generic assertion helper to make arbitrary conversions look routine. Permit a double assertion only when verified runtime identity conflicts with an external declaration or a known compiler limitation and no correction, augmentation, narrowing, validation, overload, or typed adapter can express the fact. Every remaining double assertion must have an adjacent comment that states:
+Default to precise types and `unknown` at untrusted boundaries. Permit `any` when it is the clearest, smallest way to suspend checking for one understood relationship and typed code resumes immediately on both sides. Require all of these conditions:
 
-- the runtime evidence that makes the target true;
-- why the source declaration or compiler model is insufficient;
-- an issue, specification, or removal condition when one exists.
+- Pin the result with an immediate annotation, non-generic parameter, explicit return contract, or another trustworthy typed boundary.
+- Prevent `any` from determining an inferred return, generic argument, overload choice, callback type, stored property, exported signature, or declaration output.
+- Know exactly which check is bypassed and keep arbitrary member access or calls on the `any` out of the surrounding implementation.
+- Establish that the runtime value satisfies the consumed behavior, that staged construction completes before the value can escape or be observed, or that a focused test deliberately uses an invalid/partial substitute whose differences are irrelevant to the behavior under test.
+- Prefer a more precise solution when it restores meaningful checking or refactor protection without disproportionate complexity.
 
-Add a focused type regression and a runtime test of the asserted behavior. Confine any lint suppression to the exact expression.
+An explicit return annotation is justified when it forms the containment boundary for a partial test double:
+
+```ts
+interface Service {
+  start(): void;
+  stop(): void;
+}
+
+function createServiceMock(): Service {
+  return { start: () => undefined } as any;
+}
+```
+
+The mock need not reproduce unused production behavior, but every difference must be irrelevant to the test. When useful, check the provided fields with `satisfies Partial<Service>` before the final escape hatch. A deliberate invalid-input test may cast at the parser/API boundary because violating the static contract is the behavior being tested.
+
+For staged construction, prefer a `Partial<T>` or a dedicated builder and assert only when construction is complete. `const value: T = {} as any` is acceptable only when initialization is short and uninterrupted, no read or call can observe the incomplete value, and the result is fully established before it leaves that scope. Remember that this pattern forfeits diagnostics for missed required fields.
+
+Prefer expression-scoped `as any` to a longer-lived `: any` binding when only one relationship needs to be bypassed. A local `: any` is reasonable inside a narrow adapter or implementation when the entire binding is the intentionally unchecked unit and its output is pinned by a truthful contract.
+
+### Choose assertion syntax by its useful type effect
+
+A normal assertion is permitted only when the source and target overlap enough that one could be a more or less specific view of the other. Both `value as any` and `value as unknown as T` can bypass a rejected relationship and therefore require the same justification. Their downstream effects differ: `as any` produces `any`, while the double assertion produces `T`.
+
+Use the shortest form whose result remains safely contained. When an immediate annotation, parameter, or explicit return already fixes the useful type, prefer `as any` over a performatively specific double assertion. Use a precise target when it materially preserves downstream checking, inference, readability, or diagnostics. Do not spend characters on specificity that changes no usable type information.
+
+Keep assertions local and never expose unvalidated boundary data as a trusted domain value merely because it was asserted. Do not use a generic assertion helper to make arbitrary conversions look routine. Make the reason evident beside the code. Add an adjacent comment when the invariant, intentionally incomplete test substitute, or containment boundary is not obvious; include an issue or removal condition for a temporary external defect. Scale verification to risk: reusable interop and staged construction normally need focused type/runtime coverage, while a focused invalid-input test may itself demonstrate the reason for its one-line cast. Confine lint suppressions to the exact expression.
 
 Use non-null `!` to consume a possibly nullish value only when lifecycle or framework behavior proves presence and no safer initialization or guard can express it. Prefer narrowing, constructor initialization, an assertion function, or explicit missing-value handling.
 
@@ -761,7 +791,9 @@ The localized assertion is justified by runtime validation. Export constructors/
 - Exporting a huge anonymous inferred type that accidentally becomes a public API.
 - Replacing a known type with `unknown` and forcing every consumer to narrow again.
 - Using `{}`, boxed primitive types, or `Function` when `object`, primitive types, or a precise call signature is intended.
-- Replacing an error with `any`, a double assertion, a non-null assertion, a misleading overload, or an assertion hidden inside a generic helper.
+- Replacing an error with `any`, a double assertion, a non-null assertion, a misleading overload, or an assertion hidden inside a generic helper without first understanding and containing the rejected relationship.
+- Assuming one-line `as any` is local when it actually determines an inferred return, generic argument, overload, callback, or stored value.
+- Writing `as unknown as T` instead of a contained `as any` when the target adds no useful downstream checking, readability, or diagnostics.
 - Returning `[] as T` or `{} as T` for an arbitrary generic even though `T` may require tuple elements, properties, a brand, a subclass, or library-specific runtime behavior.
 - Using `||` for a nullish default and accidentally replacing valid falsy values.
 - Using `null!` as routine null handling instead of reserving it for a documented intentional sentinel consumed at a verified boundary.
