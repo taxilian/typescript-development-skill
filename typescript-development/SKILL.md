@@ -61,7 +61,7 @@ Use this escalation order when the compiler needs help:
 - Identify existing typecheck, lint, test, and build scripts. Preserve the project's package manager and conventions.
 - Identify the production runtime and the current owner of type-checking, emission, source execution, and process restarts. Avoid adding a second watcher for the same responsibility.
 - Inspect existing `.d.ts` files and dependency declarations before augmenting a global or module. Find the documented open interface and the exact module specifier that owns it.
-- Search existing project utilities and dependency APIs before adding a fallback, coercion, normalization, or assertion helper. Reuse the established runtime behavior and naming when it is sound.
+- Search existing project utilities and dependency APIs before adding a predicate, fallback, coercion, normalization, or assertion helper. Reuse the established runtime behavior and naming when it is sound.
 - Inspect existing TSDoc/JSDoc style, generated-documentation tooling, lint rules, declaration output, and documentation coverage expectations before adding comments or tags.
 - Inspect nearby types and values before inventing a new type. Search for the domain concept, not only the proposed identifier.
 
@@ -193,6 +193,8 @@ export function parseWidgetPayload(text: string) {
 ```
 
 Prefer inferred type predicates when TypeScript can prove them. Treat explicit `value is T` and `asserts value is T` signatures as handwritten promises and test both their true and false cases.
+
+For collection filters, reuse an existing semantic predicate or let a direct nullish check infer the narrowed element type. Do not restate the element type in a verbose inline predicate merely to help `filter`. Distinguish removing `null` and `undefined` from removing every falsy value; use truthiness only when all values meant to survive are known to be truthy, and never treat discarding both nullish values in one operation as permission to interchange them elsewhere.
 
 Permit `any` only when it disables one understood check rather than an area of the program. Pin the result immediately with a trustworthy annotation, non-generic parameter, explicit return contract, or equally clear typed boundary. Confirm that it cannot alter an inferred return, generic argument, overload choice, callback, stored property, or emitted declaration. Require a proven runtime invariant, a staged construction guarantee completed before escape, or a deliberately partial/invalid test substitute whose mismatch is irrelevant to the behavior under test. Prefer a precise model when it recovers meaningful checking, but do not add elaborate types or a longer double assertion that changes no useful type behavior. Keep `no-explicit-any` and the `no-unsafe-*` lint family enabled where compatible, with narrow reviewed exceptions.
 

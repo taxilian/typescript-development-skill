@@ -46,7 +46,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Infer local function returns and local values.
 - [ ] Give each explicit return annotation a concrete reason: public contract, recursion, intentional abstraction, containment of a localized escape hatch, `isolatedDeclarations`, overload/assertion signature, or measured performance.
 - [ ] Explicitly annotate a shared failure or exhaustiveness helper with `never`; verify that every path truly cannot complete normally.
-- [ ] Use contextual typing for callbacks rather than repeating parameter types.
+- [ ] Use contextual typing for callbacks rather than repeating parameter or predicate-target types; reuse or infer simple filter predicates.
 - [ ] Prevent inferred public declarations from exposing private names, accidental literals, or giant anonymous structures.
 - [ ] Prefer `ReturnType`, `Parameters`, and `Awaited` when a function is the source of truth.
 - [ ] Prefer `typeof`, `keyof typeof`, and indexed access when a value/property is the source of truth.
@@ -95,7 +95,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 - [ ] Use the project's existing runtime schema/validator when available.
 - [ ] Make handwritten guards prove every required field and test true/false cases.
 - [ ] Treat a predicate claiming `value is never` as a likely type lie; normal guards should narrow an impossible remainder to `never`.
-- [ ] Avoid truthiness narrowing when valid values can be `0`, `''`, or `false`.
+- [ ] Use a nullish predicate when only `null` and `undefined` are absent; use truthiness only when `false`, `0`, `0n`, `''`, and `NaN` are intentionally removed or impossible.
 - [ ] Treat caught errors as `unknown` until narrowed.
 - [ ] Prevent `any` from escaping its typed containment boundary through declarations, inferred returns, generics, overloads, callbacks, stored values, or ordinary business logic.
 - [ ] Treat assertions, brands, and non-null assertions as documented proof obligations.
@@ -105,7 +105,8 @@ Use this checklist before finishing a material implementation, refactor, migrati
 ## Type repair, defaults, and assertions
 
 - [ ] Read the compiler diagnostic and repair the source type, generic relationship, augmentation, narrowing, mutability, or destination contract before asserting.
-- [ ] Search project utilities and supported dependency APIs before introducing a coercion, normalization, fallback, or assertion helper.
+- [ ] Search project utilities and supported dependency APIs before introducing a predicate, coercion, normalization, fallback, or assertion helper.
+- [ ] Treat filtering out both nullish values as a local omission decision, never as permission to convert between `null` and `undefined` elsewhere.
 - [ ] Use direct `??` for ordinary nullish defaults; avoid `||` when valid falsy values exist.
 - [ ] Require a fallback to be genuinely assignable to the inferred result type; use `NoInfer` when the nullable value must be the only inference source.
 - [ ] Reject generic helpers that manufacture arbitrary `T` with `[] as T`, `{} as T`, a double assertion, a predicate, or a misleading overload.

@@ -411,6 +411,25 @@ The discriminant check narrows the first branch; the early return narrows the re
 
 Do not extract a one-use predicate merely to restate an inline check. Create a named guard when it expresses a reused semantic rule or performs multi-step boundary validation. An explicit `value is T` predicate is an unchecked promise that must be correct in both directions; it is not more type-safe than control flow the compiler can analyze itself.
 
+### Filter collections with semantic predicates
+
+Let the element type flow into a filter callback instead of spelling it again in an explicit predicate. For a one-off nullish filter, a direct `value != null` comparison infers `NonNullable<T>`. When the operation is repeated or the project has an established utility, reuse its name and behavior rather than writing an inline `value is ReturnType<...>` or equivalent annotation.
+
+```ts
+/** Identifies non-nullish values without rejecting other falsy values. */
+export function isValue<T>(value: T) {
+  return value !== null && value !== undefined;
+}
+
+const records = possibleRecords.filter(isValue);
+```
+
+TypeScript infers the generic predicate for this single-return function; add an explicit `value is NonNullable<T>` return only for a deliberate published contract, a declaration constraint, or a demonstrated inference gap. Search the project's utilities before adding a synonym such as `isValue`, `isPresent`, or `isNonNullish`.
+
+Use a project-standard truthiness predicate when the operation intentionally removes every falsy member, or when every non-nullish member is guaranteed truthy, as with ordinary objects. If `false`, `0`, `0n`, `''`, or `NaN` may be valid, use a nullish predicate instead. Do not force `Boolean` into a narrowing predicate with a handwritten inline annotation: broad primitive truthiness cannot satisfy the predicate's false branch precisely. Choose between these operations by semantics, not an assumed micro-performance difference.
+
+Filtering out both nullish values means only that this result omits both. It does not make `null` and `undefined` interchangeable in domain models, API payloads, database writes, optional properties, defaults, or later assignments.
+
 Normal guards can eliminate every member of a union, at which point the remaining value becomes `never`. A predicate such as `value is never` is almost always a type lie, not a useful guard. Use normal narrowing to reach `never`, then check the impossible remainder.
 
 ## Enforce exhaustive decisions
