@@ -65,7 +65,7 @@ Use this checklist before finishing a material implementation, refactor, migrati
 
 - [ ] Search for an existing domain type before adding one.
 - [ ] Extend the parent interface for a real object hierarchy.
-- [ ] Use `Pick`, `Omit`, `Partial`, `Required`, or indexed access instead of copying linked fields.
+- [ ] Reuse the authoritative type when it describes the complete value; use `Pick`, `Omit`, `Partial`, `Required`, or indexed access instead of copying only when the derived shape is a real projection or intentional contract.
 - [ ] Keep coincidentally same-shaped fields independent when they may evolve separately.
 - [ ] Replace hard-to-read utility stacks with a small named interface/type.
 - [ ] Check utility behavior over unions; distribute only when intended.

@@ -36,7 +36,7 @@ Judge these priorities across the abstraction and all of its consumers, not one 
 2. Infer local values and function returns by default.
 3. Annotate only where the annotation expresses a real contract, breaks a cycle, enables an intentional abstraction or assertion signature, marks a deliberately non-returning function, satisfies `isolatedDeclarations`, or fixes a measured compiler/declaration performance problem.
 4. Minimize total complexity across definitions and consumers. Accept localized, named, documented, and tested type machinery when it makes common usage intuitive and meaningfully simpler.
-5. Keep one authoritative definition. Derive related types with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension.
+5. Keep one authoritative definition. Reuse it directly when it already describes the value; derive a related type with `typeof`, `keyof`, indexed access, `ReturnType`, `Parameters`, `Awaited`, `Pick`, `Omit`, or interface extension only when the derived type represents a meaningful contract or runtime shape.
 6. Validate object literals with `satisfies`; do not erase their useful inferred detail with a broad annotation.
 7. Use `as const` for configuration and lookup data when literal preservation and readonly intent are correct. Do not use it as decoration or claim runtime immutability.
 8. Keep `unknown` at genuinely untrusted or universal boundaries and narrow it immediately. Use `any` rarely, as the smallest clear suspension of checking for one understood relationship; resume typed code immediately and prevent it from leaking through declarations, inferred returns, generics, overloads, callbacks, or stored values.
@@ -80,7 +80,7 @@ For every requested type change, identify:
 
 Choose value-first design when runtime data is authoritative. Choose a named interface first when an external or published contract is authoritative. Do not create a value/type dependency cycle merely to avoid writing an interface.
 
-### 3. Choose the narrowest useful typing mechanism
+### 3. Choose the simplest truthful typing mechanism
 
 | Situation | Default | Annotate or change course when |
 | --- | --- | --- |
@@ -91,6 +91,7 @@ Choose value-first design when runtime data is authoritative. Choose a named int
 | Schema/definition-driven API | Preserve the full literal and pass it directly, or use `as const satisfies`; use the library's inference helper | An external contract is authoritative or the library documents an inference gap |
 | Core type produced by a function | `ReturnType<typeof createThing>` | A separately versioned external contract is the real authority |
 | Type tied to a property | `Model['property']` | The property relationship is accidental rather than semantic |
+| Existing value known to be a complete domain model | Preserve or infer the authoritative domain type | The runtime value is genuinely projected or a deliberate boundary exposes a smaller contract |
 | Untrusted input | `unknown`, schema/guard, then domain type | A framework already returns a validated precise type |
 | Existing global/module member missing from types | Documented interface or module augmentation plus runtime proof | The shape is local to one pipeline; use a generic, refined type, or wrapper instead |
 | Reusable object hierarchy | `interface Child extends Parent` | The result is a union or type-level transformation |

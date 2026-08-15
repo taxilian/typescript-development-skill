@@ -338,6 +338,10 @@ interface AuditEntry {
 }
 ```
 
+Derivation is not automatically better than direct reuse. Preserve the authoritative domain type when it already describes the complete runtime value. Use `Pick`, `Omit`, and similar utilities when the transformed shape has its own meaning: an actual projection, an intentionally smaller input requirement, a deliberate output or API view, or another reusable domain contract. Do not derive a subset merely from the properties the current implementation happens to access.
+
+For a function parameter, a smaller structural contract can decouple the consumer from unrelated fields and admit incomplete-but-sufficient values. Choose that boundary deliberately; TypeScript already permits a compatible variable to carry additional properties. For a local value, intermediate result, or assertion known to contain the complete domain object, keep the complete type so later code and refactors retain that information.
+
 Use property references for semantic linkage. Use a fresh primitive when two fields happen to share a representation but may evolve independently.
 
 Name a transformation when it appears more than once or when the expression obscures intent. Avoid deep chains such as `Partial<Pick<Omit<...>>>`; a short interface can be more DRY in practice because readers do not have to reconstruct it repeatedly.
@@ -619,6 +623,8 @@ Allow `as` only for:
 - intentional broadening that cannot be expressed more clearly with an annotation;
 - a focused test that deliberately supplies invalid input or a partial substitute;
 - short staged construction or an implementation detail behind a truthful typed contract when TypeScript cannot express the local relationship clearly.
+
+Choose an assertion target from the runtime invariant, not from the properties immediately read afterward. When a value is known to be a complete domain object, assert or reference that authoritative type rather than manufacturing a `Pick` of the current accesses. Assert a projected or partial type only when that is all the runtime source guarantees. First prefer repairing the source declaration, augmentation, generic relationship, or validation boundary so the assertion is unnecessary.
 
 ### Contain rare uses of `any`
 
